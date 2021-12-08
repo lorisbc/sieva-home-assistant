@@ -6,9 +6,7 @@ from custom_components.sieva.sieva import Sieva
 import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity, STATE_CLASS_TOTAL_INCREASING
-from homeassistant.const import (
-    CONF_PASSWORD, CONF_LOGIN, CONF_DELIVERY_POINT,
-    VOLUME_CUBIC_METERS)
+from homeassistant.const import VOLUME_CUBIC_METERS
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.event import track_time_interval, call_later
 
@@ -20,6 +18,10 @@ DEFAULT_SCAN_INTERVAL = timedelta(hours=12)
 HA_INDEX_ENERGY_M3 = 'Sieva m3'
 
 # Config
+CONF_LOGIN = "login"
+CONF_PASSWORD = "password"
+CONF_DELIVERY_POINT = "delivery_point"
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_LOGIN): cv.string,
     vol.Required(CONF_PASSWORD): cv.string,
