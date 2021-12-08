@@ -1,0 +1,11 @@
+{
+  "domain": "sieva",
+  "name": "Sieva",
+  "documentation": "https://github.com/lorisbc/sieva-home-assistant",
+  "issue_tracker": "https://github.com/lorisbc/sieva-home-assistant/issues",
+  "dependencies": [],
+  "version": "0.0.1",
+  "codeowners": ["lorisbc"],
+  "requirements": ["requests-HTML==0.10.0"],
+  "iot_class": "cloud_polling"
+}
