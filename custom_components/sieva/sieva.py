@@ -83,11 +83,10 @@ class Sieva:
 
         cr = csv.reader(decoded_csv_response.splitlines(), delimiter=';')
         lines = list(cr)
-        lines.pop(0) # Remove header
+        lines.pop(0)  # Remove header
 
         index_m3 = 0
         for row in lines:
-            print(row)
             index_m3 += float(row[2])
 
         return index_m3
