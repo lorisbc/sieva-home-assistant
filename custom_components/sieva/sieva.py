@@ -2,7 +2,9 @@ import csv
 from requests_html import HTMLSession
 from functools import wraps
 import time
+import logging
 
+_LOGGER = logging.getLogger(__name__)
 
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     """Retry calling the decorated function using an exponential backoff.
@@ -61,7 +63,7 @@ class Sieva:
         self.password = password
         self.delivery_point = delivery_point
 
-    @retry(Exception, tries=4, delay=60, backoff=3)
+    @retry(Exception, tries=4, delay=60, backoff=3, logger=_LOGGER)
     def get_consumption(self):
 
         session = HTMLSession()
@@ -71,15 +73,21 @@ class Sieva:
         verification = login_page.html.xpath('//*[@id="out_container"]/div[2]/form/input')
         verification_token = verification[0].attrs['value']
 
+        time.sleep(10)
+
         session.post('https://ael.sieva.fr/Portail/fr-FR/Connexion/Login', data={
             'Login': self.login,
             'MotDePasse': self.password,
             '__RequestVerificationToken': verification_token
         })
 
+        time.sleep(10)
+
         # Get data from csv export
         csv_response = session.get(f"https://ael.sieva.fr/Portail/fr-FR/Usager/Abonnement/ExportGraphReleveDataCSV?pointDInstallationId={self.delivery_point}&dateDebut=&dateFin=&granularite=Annee")
         decoded_csv_response = csv_response.content.decode('utf-8')
+
+        _LOGGER.debug(f"Csv response : {decoded_csv_response}")
 
         cr = csv.reader(decoded_csv_response.splitlines(), delimiter=';')
         lines = list(cr)

@@ -13,7 +13,7 @@ from homeassistant.helpers.event import track_time_interval, call_later
 _LOGGER = logging.getLogger(__name__)
 
 # CONST
-DEFAULT_SCAN_INTERVAL = timedelta(hours=12)
+DEFAULT_SCAN_INTERVAL = timedelta(hours=6)
 
 HA_INDEX_ENERGY_M3 = 'Sieva m3'
 
@@ -38,6 +38,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         login = config[CONF_LOGIN]
         password = config[CONF_PASSWORD]
         delivery_point = config[CONF_DELIVERY_POINT]
+
+        _LOGGER.debug(f"Delivery point: {delivery_point}")
 
         account = SievaAccount(hass, login, password, delivery_point)
         add_entities(account.sensors, True)
