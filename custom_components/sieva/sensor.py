@@ -100,8 +100,9 @@ class SievaSensor(SensorEntity):
         self._unit = unit
         self._measure = None
         self._attr_state_class = STATE_CLASS_TOTAL_INCREASING
+        self._attr_device_class = "water"
 
-    @property
+@property
     def name(self):
         """Return the name of the sensor."""
         return self._name
