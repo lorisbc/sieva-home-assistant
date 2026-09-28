@@ -3,14 +3,17 @@
     "step": {
       "user": {
         "title": "Sieva account",
-        "description": "Credentials of the https://ael.sieva.fr customer portal.",
+        "description": "Credentials of the https://ael.sieva.fr customer portal. The installation point is detected automatically.",
         "data": {
           "username": "Login",
-          "password": "Password",
-          "delivery_point": "Installation point (pointDInstallationId)"
-        },
-        "data_description": {
-          "delivery_point": "Number sent in the GetGraphRelevesData request of the Consumption page (see README)."
+          "password": "Password"
+        }
+      },
+      "delivery_point": {
+        "title": "Installation point",
+        "description": "Choose the meter to track. If there is no list, type the pointDInstallationId (see README).",
+        "data": {
+          "delivery_point": "Installation point"
         }
       },
       "reauth_confirm": {

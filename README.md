@@ -36,19 +36,25 @@ puis redémarrer Home Assistant.
 
 ## Configuration
 
-**Paramètres → Appareils et services → Ajouter une intégration → Sieva**, puis saisir :
+**Paramètres → Appareils et services → Ajouter une intégration → Sieva**, puis saisir
+l'identifiant et le mot de passe de l'espace client.
 
-- votre identifiant et votre mot de passe de l'espace client ;
-- le **point d'installation** (`pointDInstallationId`).
+Le point d'installation (`pointDInstallationId`) est détecté automatiquement : si le
+compte en a plusieurs, une liste est proposée.
 
-### Trouver le point d'installation
+<details>
+<summary>Si la détection échoue (saisie manuelle)</summary>
 
 1. Se connecter sur https://ael.sieva.fr et ouvrir la page **Consommations**
-2. Ouvrir les outils de développement du navigateur (F12) → onglet **Réseau**
-3. Repérer la requête `GetGraphRelevesData` : son corps contient
-   `"pointDInstallationId":"XXXX"` → `XXXX` est la valeur à saisir.
+2. Outils de développement du navigateur (F12) → onglet **Réseau**
+3. La requête `GetGraphRelevesData` contient `"pointDInstallationId":"XXXX"` :
+   `XXXX` est la valeur à saisir (ce n'est pas le numéro de l'URL `/Consommations/NNNNN`).
 
-> Ce n'est pas le numéro présent dans l'URL `/Consommations/NNNNN`.
+</details>
+
+Les identifiants sont stockés par Home Assistant dans la configuration de l'intégration
+(le portail Sieva ne propose pas d'API à jeton). Si le mot de passe change, Home
+Assistant demande de le ressaisir.
 
 ### Tableau de bord Énergie
 
@@ -80,7 +86,7 @@ dans le tableau de bord Énergie, remplacez-le par le nouveau capteur **Index**.
 
   ```bash
   pip install aiohttp
-  SIEVA_LOGIN=... SIEVA_PASSWORD=... SIEVA_PI=4064 python scripts/sieva_cli.py
+  SIEVA_LOGIN=... SIEVA_PASSWORD=... python scripts/sieva_cli.py
   ```
 
 ## Développement

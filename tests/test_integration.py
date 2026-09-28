@@ -11,37 +11,59 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.sieva.api import SievaAuthError, SievaData
 from custom_components.sieva.const import CONF_DELIVERY_POINT, DOMAIN
 
-USER_INPUT = {
-    CONF_USERNAME: "me@example.com",
-    CONF_PASSWORD: "pwd",
-    CONF_DELIVERY_POINT: "4064",
-}
+CREDENTIALS = {CONF_USERNAME: "me@example.com", CONF_PASSWORD: "pwd"}
+USER_INPUT = {**CREDENTIALS, CONF_DELIVERY_POINT: "4064"}
 CLIENT = "custom_components.sieva.api.SievaClient.async_get_data"
+DISCOVER = "custom_components.sieva.api.SievaClient.async_get_delivery_points"
 
 
 def _data(**yearly: float) -> SievaData:
     return SievaData(yearly={k.removeprefix("y"): v for k, v in yearly.items()})
 
 
-async def test_config_flow(hass: HomeAssistant) -> None:
+async def test_config_flow_single_point(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     assert result["type"] is FlowResultType.FORM
 
-    with patch(CLIENT, AsyncMock(side_effect=SievaAuthError)):
+    with patch(DISCOVER, AsyncMock(side_effect=SievaAuthError)):
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], USER_INPUT
+            result["flow_id"], CREDENTIALS
         )
     assert result["errors"] == {"base": "invalid_auth"}
 
-    with patch(CLIENT, AsyncMock(return_value=_data(y2025=50.0))):
+    with (
+        patch(DISCOVER, AsyncMock(return_value={"4064": "1 rue de la Paix"})),
+        patch(CLIENT, AsyncMock(return_value=_data(y2025=50.0))),
+    ):
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], USER_INPUT
+            result["flow_id"], CREDENTIALS
         )
         await hass.async_block_till_done()
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["title"] == "Sieva 1 rue de la Paix"
+    assert result["data"] == USER_INPUT
     assert result["result"].unique_id == "4064"
+
+
+async def test_config_flow_several_points(hass: HomeAssistant) -> None:
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    with patch(DISCOVER, AsyncMock(return_value={"1": "A", "4064": "B"})):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], CREDENTIALS
+        )
+    assert result["step_id"] == "delivery_point"
+
+    with patch(CLIENT, AsyncMock(return_value=_data(y2025=50.0))):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_DELIVERY_POINT: "4064"}
+        )
+        await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == USER_INPUT
 
 
 async def test_sensors_and_monotonic_index(hass: HomeAssistant) -> None:

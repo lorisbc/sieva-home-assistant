@@ -2,7 +2,8 @@
 
 Usage:
     pip install aiohttp
-    SIEVA_LOGIN=... SIEVA_PASSWORD=... SIEVA_PI=4064 python scripts/sieva_cli.py
+    SIEVA_LOGIN=... SIEVA_PASSWORD=... python scripts/sieva_cli.py
+    (SIEVA_PI=... to force the installation point)
 """
 
 import asyncio
@@ -24,25 +25,28 @@ _spec.loader.exec_module(api)
 
 async def main() -> None:
     logging.basicConfig(level=logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
+    login, password = os.environ["SIEVA_LOGIN"], os.environ["SIEVA_PASSWORD"]
     async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar()) as session:
-        client = api.SievaClient(
-            session,
-            os.environ["SIEVA_LOGIN"],
-            os.environ["SIEVA_PASSWORD"],
-            os.environ["SIEVA_PI"],
-        )
-        await client.async_login()
-        print("Login OK")
+        points = await api.SievaClient(
+            session, login, password
+        ).async_get_delivery_points()
+        print("--- Points d'installation ---")
+        for point, address in points.items():
+            print(f"  {point}: {address}")
 
-        raw = await client.async_get_graph_payload()
-        print("--- GetGraphRelevesData (raw) ---")
-        print(json.dumps(raw, indent=2, ensure_ascii=False))
+        delivery_point = os.getenv("SIEVA_PI") or next(iter(points), None)
+        if delivery_point is None:
+            raise SystemExit("Aucun point trouvé, relancez avec SIEVA_PI=...")
 
-        data = api.SievaData(yearly=api.parse_graph_payload(raw))
-        print("--- Parsed ---")
+        data = await api.SievaClient(
+            session, login, password, delivery_point
+        ).async_get_data()
+        print(f"--- GetGraphRelevesData ({delivery_point}, brut) ---")
+        print(json.dumps(data.raw, indent=2, ensure_ascii=False))
+        print("--- Par année ---")
         for year, value in sorted(data.yearly.items()):
             print(f"  {year}: {value} m³")
-        print(f"TOTAL (index): {data.total} m³")
+        print(f"INDEX: {data.total} m³")
 
 
 if __name__ == "__main__":
