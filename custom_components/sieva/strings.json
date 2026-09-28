@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sieva account",
+        "description": "Credentials of the https://ael.sieva.fr customer portal.",
+        "data": {
+          "username": "Login",
+          "password": "Password",
+          "delivery_point": "Installation point (pointDInstallationId)"
+        },
+        "data_description": {
+          "delivery_point": "Number sent in the GetGraphRelevesData request of the Consumption page (see README)."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to Sieva",
+        "description": "The password for {username} is no longer valid.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid login or password.",
+      "cannot_connect": "Unable to reach the Sieva portal.",
+      "invalid_data": "Logged in, but the consumption data could not be read. Check the installation point.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This installation point is already configured.",
+      "reauth_successful": "Reauthentication successful."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "index": {
+        "name": "Index"
+      },
+      "current_year": {
+        "name": "Current year consumption"
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Compte Sieva",
+        "description": "Identifiants de l'espace client https://ael.sieva.fr.",
+        "data": {
+          "username": "Identifiant",
+          "password": "Mot de passe",
+          "delivery_point": "Point d'installation (pointDInstallationId)"
+        },
+        "data_description": {
+          "delivery_point": "Numéro visible dans la requête GetGraphRelevesData de la page Consommations (voir README)."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnexion à Sieva",
+        "description": "Le mot de passe du compte {username} n'est plus valide.",
+        "data": {
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Identifiant ou mot de passe incorrect.",
+      "cannot_connect": "Impossible de joindre le portail Sieva.",
+      "invalid_data": "Connexion réussie mais les données de consommation sont illisibles. Vérifiez le point d'installation.",
+      "unknown": "Erreur inattendue."
+    },
+    "abort": {
+      "already_configured": "Ce point d'installation est déjà configuré.",
+      "reauth_successful": "Reconnexion réussie."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "index": {
+        "name": "Index"
+      },
+      "current_year": {
+        "name": "Consommation de l'année"
+      }
+    }
+  }
+}
