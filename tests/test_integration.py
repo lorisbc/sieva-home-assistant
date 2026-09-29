@@ -119,7 +119,7 @@ async def test_several_accounts_and_meters(
             if (DOMAIN, "1234") in device.identifiers
         ]
         assert device.name == "Sieva 1234"
-        assert device.serial_number == "C15FA000001"
+        assert device.serial_number == "6900000123"
         current_year = hass.states.get("sensor.sieva_1234_current_year")
         assert float(current_year.state) == 12.5
         assert current_year.attributes["yearly"] == {"2025": 50.0, "2026": 12.5}

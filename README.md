@@ -93,8 +93,8 @@ Le portail utilise trois numéros différents pour un même compteur :
 | Numéro | Exemple | Où le voir | Utilisation dans l'intégration |
 | --- | --- | --- | --- |
 | Identifiant interne (`pointDInstallationId`) | `1234` | Invisible sur le portail (utilisé par ses requêtes) | Nom de l'appareil (`Sieva 1234`), identifiants des entités, récupération des données |
-| Numéro de point d'installation | `6900000123` | Portail → *Point d'installation* | Attribut `installation_point` |
-| Numéro de compteur | `C15FA012345` | Portail → *Compteur*, et sur le compteur lui-même | Attribut `meter` et numéro de série de l'appareil |
+| Numéro de point d'installation | `6900000123` | Portail → *Point d'installation* | Attribut `installation_point` et numéro de série de l'appareil |
+| Numéro de compteur | `C15FA012345` | Portail → *Compteur*, et sur le compteur lui-même | Attribut `meter` |
 
 Si le compteur est remplacé, le numéro de compteur change mais pas les deux
 autres : l'appareil et son historique sont conservés.
@@ -265,8 +265,8 @@ The portal uses three different numbers for the same meter:
 | Number | Example | Where to see it | Use in the integration |
 | --- | --- | --- | --- |
 | Internal id (`pointDInstallationId`) | `1234` | Hidden on the portal (used by its requests) | Device name (`Sieva 1234`), entity ids, data retrieval |
-| Installation point number | `6900000123` | Portal → *Point d'installation* | `installation_point` attribute |
-| Meter serial number | `C15FA012345` | Portal → *Compteur*, and on the meter itself | `meter` attribute and device serial number |
+| Installation point number | `6900000123` | Portal → *Point d'installation* | `installation_point` attribute and device serial number |
+| Meter serial number | `C15FA012345` | Portal → *Compteur*, and on the meter itself | `meter` attribute |
 
 If the meter is replaced, its serial number changes but not the other two: the device
 and its history are kept.

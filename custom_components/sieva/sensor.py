@@ -66,7 +66,9 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
             name=f"Sieva {point}",
             manufacturer="Sieva",
             model="Water meter",
-            serial_number=coordinator.data[point].meter or None,
+            # The installation point outlives meter replacements, unlike the
+            # meter serial number (kept in the "meter" attribute).
+            serial_number=coordinator.data[point].installation_point or None,
             entry_type=DeviceEntryType.SERVICE,
             configuration_url="https://ael.sieva.fr/Portail/fr-FR/Connexion/Login",
         )
