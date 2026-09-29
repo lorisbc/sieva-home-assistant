@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "sensor": {
+      "installation_point": {
+        "default": "mdi:barcode"
+      },
+      "meter": {
+        "default": "mdi:counter"
+      },
+      "address": {
+        "default": "mdi:map-marker"
+      }
+    }
+  }
+}

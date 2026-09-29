@@ -12,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfVolume
+from homeassistant.const import EntityCategory, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -28,13 +28,16 @@ _LOGGER = logging.getLogger(__name__)
 # Data is fetched by the coordinator, entities never poll.
 PARALLEL_UPDATES = 0
 
+# Diagnostic sensors shown on the device page: key = SievaData field.
+INFO_KEYS = ("installation_point", "meter", "address")
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SievaConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up two sensors per installation point of the account."""
+    """Set up the sensors of every installation point of the account."""
     coordinator = entry.runtime_data
     async_add_entities(
         entity
@@ -42,6 +45,7 @@ async def async_setup_entry(
         for entity in (
             SievaTotalSensor(coordinator, point),
             SievaCurrentYearSensor(coordinator, point),
+            *(SievaInfoSensor(coordinator, point, key) for key in INFO_KEYS),
         )
     )
 
@@ -51,10 +55,6 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
 
     _attr_has_entity_name = True
     _attr_attribution = "Data provided by Sieva"
-    _attr_device_class = SensorDeviceClass.WATER
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
-    _attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
-    _attr_suggested_display_precision = 3
 
     def __init__(self, coordinator: SievaCoordinator, point: str, key: str) -> None:
         super().__init__(coordinator)
@@ -80,6 +80,15 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
     def available(self) -> bool:
         return super().available and self.point_data is not None
 
+
+class SievaWaterSensor(SievaEntity):
+    """Base for the consumption sensors (m³)."""
+
+    _attr_device_class = SensorDeviceClass.WATER
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
+    _attr_suggested_display_precision = 3
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         if (data := self.point_data) is None:
@@ -91,7 +100,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
         }
 
 
-class SievaTotalSensor(SievaEntity, RestoreSensor):
+class SievaTotalSensor(SievaWaterSensor, RestoreSensor):
     """Cumulated consumption since the start of the contract (m³).
 
     This is the sensor to use in the Energy dashboard.
@@ -131,7 +140,7 @@ class SievaTotalSensor(SievaEntity, RestoreSensor):
         self._attr_native_value = data.total
 
 
-class SievaCurrentYearSensor(SievaEntity, SensorEntity):
+class SievaCurrentYearSensor(SievaWaterSensor, SensorEntity):
     """Consumption of the current calendar year (m³)."""
 
     def __init__(self, coordinator: SievaCoordinator, point: str) -> None:
@@ -153,3 +162,19 @@ class SievaCurrentYearSensor(SievaEntity, SensorEntity):
                 year: round(value, 3) for year, value in sorted(data.yearly.items())
             },
         }
+
+
+class SievaInfoSensor(SievaEntity, SensorEntity):
+    """Installation point number, meter serial number or address."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: SievaCoordinator, point: str, key: str) -> None:
+        super().__init__(coordinator, point, key)
+        self._key = key
+
+    @property
+    def native_value(self) -> str | None:
+        if (data := self.point_data) is None:
+            return None
+        return getattr(data, self._key) or None

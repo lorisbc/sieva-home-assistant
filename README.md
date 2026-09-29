@@ -22,7 +22,7 @@ Intégration Home Assistant qui récupère la consommation d'eau depuis l'espace
 - **Plusieurs comptes** (ex. le vôtre et celui de vos parents) et **plusieurs compteurs
   par compte**
 - Un appareil par compteur (ex. `Sieva 1234`), avec l'adresse, le numéro de point
-  d'installation et le numéro de compteur
+  d'installation et le numéro de compteur affichés sur sa page
 - Compatible avec le **tableau de bord Énergie** (consommation d'eau)
 - Ressaisie du mot de passe proposée automatiquement s'il change
 - Diagnostics téléchargeables (identifiants, adresses et numéros masqués)
@@ -76,7 +76,17 @@ Pour chaque compteur (`1234` = son identifiant interne, voir plus bas) :
 | **Total** (`sensor.sieva_1234_total`) | Consommation cumulée en m³ (`total_increasing`). **À utiliser dans le tableau de bord Énergie.** |
 | **Current year** (`sensor.sieva_1234_current_year`) | Consommation de l'année civile en cours, en m³. L'attribut `yearly` donne le détail par année. |
 
-Attributs communs aux deux capteurs :
+Capteurs de **diagnostic**, affichés dans la carte « Diagnostic » de la page de
+l'appareil :
+
+| Capteur | Exemple | Description |
+| --- | --- | --- |
+| **Installation point** (`sensor.sieva_1234_installation_point`) | `6900000123` | Numéro du point d'installation |
+| **Meter** (`sensor.sieva_1234_meter`) | `C15FA012345` | Numéro du compteur physique |
+| **Address** (`sensor.sieva_1234_address`) | `1, RUE DE LA PAIX 69380 CHASSELAY` | Adresse desservie |
+
+Les mêmes informations sont aussi disponibles en attributs de Total et Current year
+(pratique dans les modèles) :
 
 | Attribut | Exemple | Description |
 | --- | --- | --- |
@@ -93,11 +103,11 @@ Le portail utilise trois numéros différents pour un même compteur :
 | Numéro | Exemple | Où le voir | Utilisation dans l'intégration |
 | --- | --- | --- | --- |
 | Identifiant interne (`pointDInstallationId`) | `1234` | Invisible sur le portail (utilisé par ses requêtes) | Nom de l'appareil (`Sieva 1234`), identifiants des entités, récupération des données |
-| Numéro de point d'installation | `6900000123` | Portail → *Point d'installation* | Attribut `installation_point` |
-| Numéro de compteur | `C15FA012345` | Portail → *Compteur*, et sur le compteur lui-même | Attribut `meter` et numéro de série de l'appareil |
+| Numéro de point d'installation | `6900000123` | Portail → *Point d'installation* | Capteur **Installation point**, attribut `installation_point` |
+| Numéro de compteur | `C15FA012345` | Portail → *Compteur*, et sur le compteur lui-même | Capteur **Meter**, attribut `meter`, numéro de série de l'appareil |
 
-Si le compteur est remplacé, le numéro de compteur change mais pas les deux
-autres : l'appareil et son historique sont conservés.
+Si le compteur est remplacé, seul le numéro de compteur change (capteur Meter et
+numéro de série) : l'appareil, ses capteurs et leur historique sont conservés.
 
 ### Fonctionnement
 
@@ -195,7 +205,7 @@ Home Assistant integration that retrieves water consumption from the
 - **Several accounts** (e.g. yours and your parents') and **several meters per
   account**
 - One device per meter (e.g. `Sieva 1234`), with the address, the installation point
-  number and the meter serial number
+  number and the meter serial number shown on its page
 - Works with the **Energy dashboard** (water consumption)
 - Automatic re-authentication prompt when the password changes
 - Downloadable diagnostics (credentials, addresses and numbers redacted)
@@ -248,7 +258,16 @@ For each meter (`1234` = its internal id, see below):
 | **Total** (`sensor.sieva_1234_total`) | Cumulated consumption in m³ (`total_increasing`). **Use this one in the Energy dashboard.** |
 | **Current year** (`sensor.sieva_1234_current_year`) | Consumption of the current calendar year, in m³. The `yearly` attribute gives the per-year breakdown. |
 
-Attributes shared by both sensors:
+**Diagnostic** sensors, shown in the "Diagnostic" card of the device page:
+
+| Sensor | Example | Description |
+| --- | --- | --- |
+| **Installation point** (`sensor.sieva_1234_installation_point`) | `6900000123` | Installation point number |
+| **Meter** (`sensor.sieva_1234_meter`) | `C15FA012345` | Physical meter serial number |
+| **Address** (`sensor.sieva_1234_address`) | `1, RUE DE LA PAIX 69380 CHASSELAY` | Served address |
+
+The same information is also available as attributes of Total and Current year
+(handy in templates):
 
 | Attribute | Example | Description |
 | --- | --- | --- |
@@ -265,11 +284,11 @@ The portal uses three different numbers for the same meter:
 | Number | Example | Where to see it | Use in the integration |
 | --- | --- | --- | --- |
 | Internal id (`pointDInstallationId`) | `1234` | Hidden on the portal (used by its requests) | Device name (`Sieva 1234`), entity ids, data retrieval |
-| Installation point number | `6900000123` | Portal → *Point d'installation* | `installation_point` attribute |
-| Meter serial number | `C15FA012345` | Portal → *Compteur*, and on the meter itself | `meter` attribute and device serial number |
+| Installation point number | `6900000123` | Portal → *Point d'installation* | **Installation point** sensor, `installation_point` attribute |
+| Meter serial number | `C15FA012345` | Portal → *Compteur*, and on the meter itself | **Meter** sensor, `meter` attribute, device serial number |
 
-If the meter is replaced, its serial number changes but not the other two: the device
-and its history are kept.
+If the meter is replaced, only its serial number changes (Meter sensor and serial
+number): the device, its sensors and their history are kept.
 
 ### How it works
 

@@ -36,6 +36,15 @@
       },
       "current_year": {
         "name": "Current year"
+      },
+      "installation_point": {
+        "name": "Installation point"
+      },
+      "meter": {
+        "name": "Meter"
+      },
+      "address": {
+        "name": "Address"
       }
     }
   }
