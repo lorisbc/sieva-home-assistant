@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Compte Sieva",
-        "description": "Identifiants de l'espace client https://ael.sieva.fr. Tous les compteurs du compte sont ajoutés automatiquement. Ajoutez l'intégration une fois par compte.",
+        "description": "Identifiants de l'espace client {portal_url}. Tous les compteurs du compte sont ajoutés automatiquement. Ajoutez l'intégration une fois par compte.",
         "data": {
           "username": "Identifiant",
           "password": "Mot de passe"

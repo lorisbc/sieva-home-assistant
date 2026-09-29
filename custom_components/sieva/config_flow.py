@@ -18,7 +18,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import SievaAuthError, SievaClient, SievaConnectionError, SievaError
-from .const import DOMAIN
+from .const import DOMAIN, PORTAL_URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,6 +81,7 @@ class SievaConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(USER_SCHEMA, user_input),
+            description_placeholders={"portal_url": PORTAL_URL},
             errors=errors,
         )
 

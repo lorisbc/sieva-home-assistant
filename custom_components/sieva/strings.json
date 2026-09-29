@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Sieva account",
-        "description": "Credentials of the https://ael.sieva.fr customer portal. Every meter of the account is added automatically. Add the integration once per account.",
+        "description": "Credentials of the {portal_url} customer portal. Every meter of the account is added automatically. Add the integration once per account.",
         "data": {
           "username": "Login",
           "password": "Password"
