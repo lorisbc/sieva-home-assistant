@@ -107,11 +107,11 @@ async def test_several_accounts_and_meters(
         assert total.attributes["device_class"] == "water"
         assert total.attributes["state_class"] == "total_increasing"
         assert total.attributes["unit_of_measurement"] == "m³"
-        assert total.attributes["adresse"] == "1 RUE A 69380 CHASSELAY"
-        assert total.attributes["point_d_installation"] == "6904900904"
+        assert total.attributes["address"] == "1 RUE A 69380 CHASSELAY"
+        assert total.attributes["installation_point"] == "6904900904"
         current_year = hass.states.get("sensor.sieva_4064_current_year")
         assert float(current_year.state) == 12.5
-        assert current_year.attributes["par_annee"] == {"2025": 50.0, "2026": 12.5}
+        assert current_year.attributes["yearly"] == {"2025": 50.0, "2026": 12.5}
         assert float(hass.states.get("sensor.sieva_5000_total").state) == 3.0
         assert float(hass.states.get("sensor.sieva_7000_total").state) == 7.0
 

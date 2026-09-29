@@ -84,7 +84,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
     def extra_state_attributes(self) -> dict[str, Any]:
         if (data := self.point_data) is None:
             return {}
-        return {"adresse": data.address, "point_d_installation": data.reference}
+        return {"address": data.address, "installation_point": data.reference}
 
 
 class SievaTotalSensor(SievaEntity, RestoreSensor):
@@ -145,7 +145,7 @@ class SievaCurrentYearSensor(SievaEntity, SensorEntity):
             return {}
         return {
             **super().extra_state_attributes,
-            "par_annee": {
+            "yearly": {
                 year: round(value, 3) for year, value in sorted(data.yearly.items())
             },
         }

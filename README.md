@@ -74,14 +74,14 @@ Pour chaque compteur (`4064` = son point d'installation) :
 | Capteur | Description |
 | --- | --- |
 | **Total** (`sensor.sieva_4064_total`) | Consommation cumulée en m³ (`total_increasing`). **À utiliser dans le tableau de bord Énergie.** |
-| **Current year** (`sensor.sieva_4064_current_year`) | Consommation de l'année civile en cours, en m³. L'attribut `par_annee` donne le détail par année. |
+| **Current year** (`sensor.sieva_4064_current_year`) | Consommation de l'année civile en cours, en m³. L'attribut `yearly` donne le détail par année. |
 
 Attributs communs aux deux capteurs :
 
 | Attribut | Exemple | Description |
 | --- | --- | --- |
-| `adresse` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Adresse desservie |
-| `point_d_installation` | `6904900904` | Référence du point d'installation (aussi affichée comme numéro de série de l'appareil) |
+| `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Adresse desservie |
+| `installation_point` | `6904900904` | Référence du point d'installation (aussi affichée comme numéro de série de l'appareil) |
 
 Vous pouvez renommer l'appareil dans Home Assistant (ex. « Maison », « Parents »).
 
@@ -232,14 +232,14 @@ For each meter (`4064` = its installation point):
 | Sensor | Description |
 | --- | --- |
 | **Total** (`sensor.sieva_4064_total`) | Cumulated consumption in m³ (`total_increasing`). **Use this one in the Energy dashboard.** |
-| **Current year** (`sensor.sieva_4064_current_year`) | Consumption of the current calendar year, in m³. The `par_annee` attribute gives the per-year breakdown. |
+| **Current year** (`sensor.sieva_4064_current_year`) | Consumption of the current calendar year, in m³. The `yearly` attribute gives the per-year breakdown. |
 
 Attributes shared by both sensors:
 
 | Attribute | Example | Description |
 | --- | --- | --- |
-| `adresse` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Served address |
-| `point_d_installation` | `6904900904` | Installation point reference (also shown as the device serial number) |
+| `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Served address |
+| `installation_point` | `6904900904` | Installation point reference (also shown as the device serial number) |
 
 You can rename the device in Home Assistant (e.g. "Home", "Parents").
 
