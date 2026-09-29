@@ -23,7 +23,7 @@ def _point(address: str, **yearly: float) -> SievaData:
     return SievaData(
         yearly={k.removeprefix("y"): v for k, v in yearly.items()},
         address=address,
-        installation_point="6904900904",
+        installation_point="6900000123",
         meter="C15FA000001",
     )
 
@@ -46,7 +46,7 @@ async def test_config_flow(hass: HomeAssistant) -> None:
         )
     assert result["errors"] == {"base": "no_delivery_point"}
 
-    with patch(GET_DATA, AsyncMock(return_value={"4064": _point("1 rue A", y2025=1)})):
+    with patch(GET_DATA, AsyncMock(return_value={"1234": _point("1 rue A", y2025=1)})):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], ACCOUNT_A
         )
@@ -73,7 +73,7 @@ async def test_several_accounts_and_meters(
     freezer.move_to("2026-09-29 12:00:00+00:00")
     portal = {
         "a@example.com": {
-            "4064": _point("1 RUE A 69380 CHASSELAY", y2025=50.0, y2026=12.5),
+            "1234": _point("1 RUE A 69380 CHASSELAY", y2025=50.0, y2026=12.5),
             "5000": _point("2 RUE B 69380 CHASSELAY", y2026=3.0),
         },
         "b@example.com": {"7000": _point("3 RUE C 69001 LYON", y2026=7.0)},
@@ -101,38 +101,38 @@ async def test_several_accounts_and_meters(
             device.name
             for entry in entries
             for device in dr.async_entries_for_config_entry(devices, entry.entry_id)
-        } == {"Sieva 4064", "Sieva 5000", "Sieva 7000"}
+        } == {"Sieva 1234", "Sieva 5000", "Sieva 7000"}
 
-        total = hass.states.get("sensor.sieva_4064_total")
+        total = hass.states.get("sensor.sieva_1234_total")
         assert float(total.state) == 62.5
         assert total.attributes["device_class"] == "water"
         assert total.attributes["state_class"] == "total_increasing"
         assert total.attributes["unit_of_measurement"] == "m³"
         assert total.attributes["address"] == "1 RUE A 69380 CHASSELAY"
-        assert total.attributes["installation_point"] == "6904900904"
+        assert total.attributes["installation_point"] == "6900000123"
         assert total.attributes["meter"] == "C15FA000001"
         (device,) = [
             device
             for device in dr.async_entries_for_config_entry(
                 dr.async_get(hass), entries[0].entry_id
             )
-            if (DOMAIN, "4064") in device.identifiers
+            if (DOMAIN, "1234") in device.identifiers
         ]
-        assert device.name == "Sieva 4064"
+        assert device.name == "Sieva 1234"
         assert device.serial_number == "C15FA000001"
-        current_year = hass.states.get("sensor.sieva_4064_current_year")
+        current_year = hass.states.get("sensor.sieva_1234_current_year")
         assert float(current_year.state) == 12.5
         assert current_year.attributes["yearly"] == {"2025": 50.0, "2026": 12.5}
         assert float(hass.states.get("sensor.sieva_5000_total").state) == 3.0
         assert float(hass.states.get("sensor.sieva_7000_total").state) == 7.0
 
         # A lower total must not be published (would be seen as a meter reset).
-        portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=10.0)
+        portal["a@example.com"]["1234"] = _point("1 RUE A", y2025=50.0, y2026=10.0)
         await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
         assert float(hass.states.get(total.entity_id).state) == 62.5
 
-        portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=13.0)
+        portal["a@example.com"]["1234"] = _point("1 RUE A", y2025=50.0, y2026=13.0)
         await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
         assert float(hass.states.get(total.entity_id).state) == 63.0

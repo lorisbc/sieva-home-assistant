@@ -61,8 +61,8 @@ class SievaData:
 
     yearly: dict[str, float]
     address: str = ""
-    installation_point: str = ""  # number shown on the portal, e.g. 6904900904
-    meter: str = ""  # physical meter serial number, e.g. C15FA046458
+    installation_point: str = ""  # number shown on the portal, e.g. 6900000123
+    meter: str = ""  # physical meter serial number, e.g. C15FA012345
     raw: Any = field(default=None, repr=False)
 
     @property
