@@ -1,2 +1,0 @@
-homeassistant
-requests-HTML==0.10.0

@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sieva account",
+        "description": "Credentials of the {portal_url} customer portal. Every meter of the account is added automatically. Add the integration once per account.",
+        "data": {
+          "username": "Login",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to Sieva",
+        "description": "The password for {username} is no longer valid.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid login or password.",
+      "cannot_connect": "Unable to reach the Sieva portal.",
+      "invalid_data": "Logged in, but the consumption data could not be read. Check the installation point.",
+      "unknown": "Unexpected error.",
+      "no_delivery_point": "No meter found on this account."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Reauthentication successful."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "index": {
+        "name": "Index"
+      },
+      "current_year": {
+        "name": "Current year consumption"
+      }
+    }
+  }
+}

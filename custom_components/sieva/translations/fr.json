@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Compte Sieva",
+        "description": "Identifiants de l'espace client {portal_url}. Tous les compteurs du compte sont ajoutés automatiquement. Ajoutez l'intégration une fois par compte.",
+        "data": {
+          "username": "Identifiant",
+          "password": "Mot de passe"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnexion à Sieva",
+        "description": "Le mot de passe du compte {username} n'est plus valide.",
+        "data": {
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Identifiant ou mot de passe incorrect.",
+      "cannot_connect": "Impossible de joindre le portail Sieva.",
+      "invalid_data": "Connexion réussie mais les données de consommation sont illisibles. Vérifiez le point d'installation.",
+      "unknown": "Erreur inattendue.",
+      "no_delivery_point": "Aucun compteur trouvé sur ce compte."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Reconnexion réussie."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "index": {
+        "name": "Index"
+      },
+      "current_year": {
+        "name": "Consommation de l'année"
+      }
+    }
+  }
+}
