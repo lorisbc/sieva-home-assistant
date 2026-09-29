@@ -50,7 +50,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
     """Base entity for one installation point."""
 
     _attr_has_entity_name = True
-    _attr_attribution = "Données fournies par Sieva"
+    _attr_attribution = "Data provided by Sieva"
     _attr_device_class = SensorDeviceClass.WATER
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
@@ -65,7 +65,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
             identifiers={(DOMAIN, point)},
             name=f"Sieva {point}",
             manufacturer="Sieva",
-            model="Compteur d'eau",
+            model="Water meter",
             serial_number=coordinator.data[point].meter or None,
             entry_type=DeviceEntryType.SERVICE,
             configuration_url="https://ael.sieva.fr/Portail/fr-FR/Connexion/Login",
@@ -122,7 +122,7 @@ class SievaTotalSensor(SievaEntity, RestoreSensor):
         # would count the whole total again: keep the previous value instead.
         if isinstance(previous, (int, float)) and data.total < previous:
             _LOGGER.warning(
-                "Total Sieva %s en baisse (%s -> %s m³), valeur précédente conservée",
+                "Sieva total for %s decreased (%s -> %s m³), keeping the previous value",
                 self._point,
                 previous,
                 data.total,

@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://ael.sieva.fr/Portail/fr-FR"
 LOGIN_URL = f"{BASE_URL}/Connexion/Login"
-SYNTHESE_URL = f"{BASE_URL}/Usager/Abonnement/Synthese/{{}}"
+SUBSCRIPTION_URL = f"{BASE_URL}/Usager/Abonnement/Synthese/{{}}"
 DELIVERY_POINTS_URL = f"{BASE_URL}/Usager/Abonnement/AjaxPointDInstallationSynchros"
 GRAPH_URL = f"{BASE_URL}/Usager/Abonnement/GetGraphRelevesData"
 READINGS_URL = f"{BASE_URL}/Usager/Abonnement/AjaxReleveSynchros"
@@ -35,7 +35,7 @@ DATATABLES_FORM = {"sEcho": "1", "iDisplayStart": "0", "iDisplayLength": "-1"}
 _TOKEN_RE = re.compile(
     r'name="__RequestVerificationToken"[^>]*?value="([^"]+)"', re.IGNORECASE
 )
-_ABONNEMENT_RE = re.compile(r"/Usager/Abonnement/\w+/(\d+)", re.IGNORECASE)
+_SUBSCRIPTION_RE = re.compile(r"/Usager/Abonnement/\w+/(\d+)", re.IGNORECASE)
 _YEAR_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
 
 
@@ -83,7 +83,7 @@ def parse_graph_payload(payload: Any) -> dict[str, float]:
         datasets = payload["datasets"]
     except (TypeError, KeyError) as err:
         raise SievaParseError(
-            f"Format GetGraphRelevesData inattendu: {payload!r:.200}"
+            f"Unexpected GetGraphRelevesData format: {payload!r:.200}"
         ) from err
 
     result: dict[str, float] = {}
@@ -108,7 +108,7 @@ def parse_delivery_points(payload: Any) -> dict[str, dict[str, str]]:
         rows = payload["aaData"]
     except (TypeError, KeyError) as err:
         raise SievaParseError(
-            "Format AjaxPointDInstallationSynchros inattendu"
+            "Unexpected AjaxPointDInstallationSynchros format"
         ) from err
     return {
         str(row[-1]): {
@@ -128,16 +128,16 @@ def parse_meter(payload: Any) -> str:
     try:
         rows = [row for row in payload["aaData"] if len(row) > 1 and row[0]]
     except (TypeError, KeyError) as err:
-        raise SievaParseError("Format AjaxReleveSynchros inattendu") from err
+        raise SievaParseError("Unexpected AjaxReleveSynchros format") from err
     if not rows:
         return ""
     latest = max(rows, key=lambda row: str(row[1]).split("/")[::-1])
     return str(latest[0]).strip()
 
 
-def parse_abonnements(html: str) -> list[str]:
+def parse_subscriptions(html: str) -> list[str]:
     """Extract the subscription ids linked from a portal page."""
-    return list(dict.fromkeys(_ABONNEMENT_RE.findall(html)))
+    return list(dict.fromkeys(_SUBSCRIPTION_RE.findall(html)))
 
 
 class SievaClient:
@@ -160,7 +160,7 @@ class SievaClient:
                 return await resp.text(), str(resp.url)
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise SievaConnectionError(
-                f"Portail Sieva injoignable ({url}): {err}"
+                f"Cannot reach the Sieva portal ({url}): {err}"
             ) from err
 
     async def _request_json(self, method: str, url: str, **kwargs: Any) -> Any:
@@ -168,18 +168,20 @@ class SievaClient:
         headers = {**XHR_HEADERS, **kwargs.pop("headers", {})}
         body, final_url = await self._request(method, url, headers=headers, **kwargs)
         if "/Connexion/Login" in final_url:
-            raise SievaAuthError("Session Sieva expirée")
+            raise SievaAuthError("Sieva session expired")
         try:
             return json.loads(body)
         except ValueError as err:
-            raise SievaParseError(f"Réponse non JSON de {url}: {body[:200]!r}") from err
+            raise SievaParseError(
+                f"Non-JSON answer from {url}: {body[:200]!r}"
+            ) from err
 
     async def async_login(self) -> str:
         """Open a new authenticated session, return the landing page HTML."""
         self._session.cookie_jar.clear()
         page, _ = await self._request("GET", LOGIN_URL)
         if (match := _TOKEN_RE.search(page)) is None:
-            raise SievaParseError("Jeton __RequestVerificationToken introuvable")
+            raise SievaParseError("__RequestVerificationToken not found")
 
         body, final_url = await self._request(
             "POST",
@@ -192,7 +194,7 @@ class SievaClient:
         )
         # A failed login renders the login form again.
         if "/Connexion/Login" in final_url and 'id="MotDePasse"' in body:
-            raise SievaAuthError("Identifiants Sieva refusés")
+            raise SievaAuthError("Sieva credentials rejected")
         return body
 
     async def _async_get_delivery_points(
@@ -204,14 +206,14 @@ class SievaClient:
         subscription page, then list its installation points.
         """
         points: dict[str, dict[str, str]] = {}
-        for abonnement in parse_abonnements(landing):
-            synthese = SYNTHESE_URL.format(abonnement)
-            await self._request("GET", synthese)
+        for subscription in parse_subscriptions(landing):
+            subscription_url = SUBSCRIPTION_URL.format(subscription)
+            await self._request("GET", subscription_url)
             payload = await self._request_json(
                 "POST",
                 DELIVERY_POINTS_URL,
                 data=DATATABLES_FORM,
-                headers={"Referer": synthese},
+                headers={"Referer": subscription_url},
             )
             points.update(parse_delivery_points(payload))
         return points
@@ -241,7 +243,7 @@ class SievaClient:
             return parse_meter(payload)
         except SievaParseError as err:
             _LOGGER.debug(
-                "Numéro de compteur indisponible pour %s: %s", delivery_point, err
+                "Meter serial number unavailable for %s: %s", delivery_point, err
             )
             return ""
 
@@ -249,7 +251,7 @@ class SievaClient:
         """Log in once and fetch every installation point of the account."""
         landing = await self.async_login()
         points = await self._async_get_delivery_points(landing)
-        _LOGGER.debug("Points d'installation trouvés: %s", points)
+        _LOGGER.debug("Installation points found: %s", points)
         data: dict[str, SievaData] = {}
         for point, info in points.items():
             raw = await self._async_get_yearly(point)

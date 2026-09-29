@@ -98,13 +98,13 @@ def test_delivery_points():
     }
 
 
-def test_abonnements_from_landing_page():
+def test_subscriptions_from_landing_page():
     html = """
     <a href="/Portail/fr-FR/Usager/Usager/Profil/95">Profil</a>
     <a href="/Portail/fr-FR/Usager/abonnement/detail/12345">Détail</a>
     <div data-url="/Portail/fr-FR/Usager/Abonnement/GetSyntheseMini/12345?x=1"></div>
     """
-    assert api.parse_abonnements(html) == ["12345"]
+    assert api.parse_subscriptions(html) == ["12345"]
 
 
 def test_meter_from_latest_reading():
