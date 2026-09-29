@@ -8,7 +8,8 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers import device_registry as dr
+from homeassistant.const import EntityCategory
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.sieva.api import SievaAuthError, SievaClient, SievaData
@@ -119,7 +120,19 @@ async def test_several_accounts_and_meters(
             if (DOMAIN, "1234") in device.identifiers
         ]
         assert device.name == "Sieva 1234"
-        assert device.serial_number == "6900000123"
+        assert device.serial_number == "C15FA000001"
+        registry = er.async_get(hass)
+        for key, value in (
+            ("installation_point", "6900000123"),
+            ("meter", "C15FA000001"),
+            ("address", "1 RUE A 69380 CHASSELAY"),
+        ):
+            entity_id = f"sensor.sieva_1234_{key}"
+            assert hass.states.get(entity_id).state == value
+            assert (
+                registry.async_get(entity_id).entity_category
+                is EntityCategory.DIAGNOSTIC
+            )
         current_year = hass.states.get("sensor.sieva_1234_current_year")
         assert float(current_year.state) == 12.5
         assert current_year.attributes["yearly"] == {"2025": 50.0, "2026": 12.5}
