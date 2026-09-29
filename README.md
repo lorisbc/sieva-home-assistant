@@ -21,10 +21,11 @@ Intégration Home Assistant qui récupère la consommation d'eau depuis l'espace
   `pointDInstallationId`)
 - **Plusieurs comptes** (ex. le vôtre et celui de vos parents) et **plusieurs compteurs
   par compte**
-- Un appareil par compteur, **nommé d'après son adresse**
+- Un appareil par compteur (ex. `Sieva 1234`), avec l'adresse, le numéro de point
+  d'installation et le numéro de compteur
 - Compatible avec le **tableau de bord Énergie** (consommation d'eau)
 - Ressaisie du mot de passe proposée automatiquement s'il change
-- Diagnostics téléchargeables (identifiants et adresses masqués)
+- Diagnostics téléchargeables (identifiants, adresses et numéros masqués)
 - Aucune dépendance Python externe
 - Compatible **Home Assistant 2025.2+**, testée sur **2026.9**
 
@@ -57,10 +58,10 @@ demande à être ressaisi.
 ```
 Sieva
 ├── moi@example.com
-│   ├── 1, RUE DE LA PAIX 69380 CHASSELAY   → Index, Consommation de l'année
-│   └── 2, RUE DU LAC 69380 CHASSELAY       → Index, Consommation de l'année
+│   ├── Sieva 1234   (1, RUE DE LA PAIX 69380 CHASSELAY)   → Total, Current year
+│   └── Sieva 5120   (2, RUE DU LAC 69380 CHASSELAY)       → Total, Current year
 └── parents@example.com
-    └── 3, PLACE DU MARCHÉ 69480 ANSE       → Index, Consommation de l'année
+    └── Sieva 7342   (3, PLACE DU MARCHÉ 69480 ANSE)       → Total, Current year
 ```
 
 Un compteur ajouté plus tard sur un compte apparaît après un rechargement de
@@ -68,12 +69,35 @@ l'intégration. Un compteur qui disparaît du portail passe en « indisponible �
 
 ### Capteurs
 
-Pour chaque compteur :
+Pour chaque compteur (`1234` = son identifiant interne, voir plus bas) :
 
 | Capteur | Description |
 | --- | --- |
-| **Index** (`sensor.<adresse>_index`) | Consommation cumulée en m³ (`total_increasing`). **À utiliser dans le tableau de bord Énergie.** |
-| **Consommation de l'année** | Consommation de l'année civile en cours, en m³. L'attribut `par_annee` donne le détail par année. |
+| **Total** (`sensor.sieva_1234_total`) | Consommation cumulée en m³ (`total_increasing`). **À utiliser dans le tableau de bord Énergie.** |
+| **Current year** (`sensor.sieva_1234_current_year`) | Consommation de l'année civile en cours, en m³. L'attribut `yearly` donne le détail par année. |
+
+Attributs communs aux deux capteurs :
+
+| Attribut | Exemple | Description |
+| --- | --- | --- |
+| `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Adresse desservie |
+| `installation_point` | `6900000123` | Numéro du point d'installation |
+| `meter` | `C15FA012345` | Numéro du compteur physique |
+
+Vous pouvez renommer l'appareil dans Home Assistant (ex. « Maison », « Parents »).
+
+#### Les trois numéros
+
+Le portail utilise trois numéros différents pour un même compteur :
+
+| Numéro | Exemple | Où le voir | Utilisation dans l'intégration |
+| --- | --- | --- | --- |
+| Identifiant interne (`pointDInstallationId`) | `1234` | Invisible sur le portail (utilisé par ses requêtes) | Nom de l'appareil (`Sieva 1234`), identifiants des entités, récupération des données |
+| Numéro de point d'installation | `6900000123` | Portail → *Point d'installation* | Attribut `installation_point` |
+| Numéro de compteur | `C15FA012345` | Portail → *Compteur*, et sur le compteur lui-même | Attribut `meter` et numéro de série de l'appareil |
+
+Si le compteur est remplacé, le numéro de compteur change mais pas les deux
+autres : l'appareil et son historique sont conservés.
 
 ### Fonctionnement
 
@@ -86,23 +110,23 @@ Toutes les **6 heures**, pour chaque compte :
 3. pour chaque compteur, lecture des consommations annuelles (`GetGraphRelevesData`,
    granularité `Annee`).
 
-L'**Index** est la somme de ces consommations annuelles : il augmente à chaque
+Le **Total** est la somme de ces consommations annuelles : il augmente à chaque
 nouvelle donnée publiée par Sieva. Le portail ne publie qu'une valeur par jour, il
 est donc inutile d'interroger plus souvent. Pour forcer une mise à jour : action
-`homeassistant.update_entity` sur le capteur Index.
+`homeassistant.update_entity` sur le capteur Total.
 
-> ℹ️ L'Index part du début de l'historique disponible sur le portail : ce n'est pas
-> le chiffre affiché sur le compteur physique. Cela n'a aucun impact sur le tableau
+> ℹ️ Le Total part du début de l'historique disponible sur le portail : ce n'est pas
+> l'index affiché sur le compteur physique. Cela n'a aucun impact sur le tableau
 > de bord Énergie, qui n'utilise que les augmentations.
 
 Si le portail renvoie un total inférieur au précédent (correction de relevé),
-l'Index garde l'ancienne valeur, pour ne pas être compté comme une remise à zéro du
+le Total garde l'ancienne valeur, pour ne pas être compté comme une remise à zéro du
 compteur dans les statistiques.
 
 ### Tableau de bord Énergie
 
 **Paramètres → Tableaux de bord → Énergie → Consommation d'eau → Ajouter une source**
-et choisir le capteur **Index**.
+et choisir le capteur **Total**.
 
 Si vous suivez aussi le compte de quelqu'un d'autre, ne l'ajoutez pas au tableau de
 bord Énergie (il serait additionné à votre consommation) : utilisez plutôt une carte
@@ -121,12 +145,12 @@ l'intégration, comme pour les autres intégrations cloud, et ne sont envoyés q
 2. Mettre à jour l'intégration puis redémarrer
 3. Ajouter l'intégration via l'interface
 4. Dans le tableau de bord Énergie, remplacer l'ancien capteur (`sensor.sieva_m3`)
-   par le nouveau capteur **Index**
+   par le nouveau capteur **Total**
 
 ### Dépannage
 
 - **Diagnostics** : page de l'intégration → menu ⋮ → *Télécharger les diagnostics*.
-  Le fichier contient les réponses brutes du portail (identifiants et adresses masqués).
+  Le fichier contient les réponses brutes du portail (identifiants, adresses et numéros masqués).
 - **Logs détaillés** :
 
   ```yaml
@@ -136,7 +160,7 @@ l'intégration, comme pour les autres intégrations cloud, et ne sont envoyés q
   ```
 
 - **Tester hors Home Assistant** (affiche les compteurs trouvés, les réponses brutes
-  et l'index) :
+  et le total) :
 
   ```bash
   python3 -m venv .venv && .venv/bin/pip install aiohttp
@@ -170,10 +194,11 @@ Home Assistant integration that retrieves water consumption from the
 - **Automatic meter discovery** (no need to look up the `pointDInstallationId`)
 - **Several accounts** (e.g. yours and your parents') and **several meters per
   account**
-- One device per meter, **named after its address**
+- One device per meter (e.g. `Sieva 1234`), with the address, the installation point
+  number and the meter serial number
 - Works with the **Energy dashboard** (water consumption)
 - Automatic re-authentication prompt when the password changes
-- Downloadable diagnostics (credentials and addresses redacted)
+- Downloadable diagnostics (credentials, addresses and numbers redacted)
 - No external Python dependency
 - Compatible with **Home Assistant 2025.2+**, tested on **2026.9**
 
@@ -205,10 +230,10 @@ again.
 ```
 Sieva
 ├── me@example.com
-│   ├── 1, RUE DE LA PAIX 69380 CHASSELAY   → Index, Current year consumption
-│   └── 2, RUE DU LAC 69380 CHASSELAY       → Index, Current year consumption
+│   ├── Sieva 1234   (1, RUE DE LA PAIX 69380 CHASSELAY)   → Total, Current year
+│   └── Sieva 5120   (2, RUE DU LAC 69380 CHASSELAY)       → Total, Current year
 └── parents@example.com
-    └── 3, PLACE DU MARCHÉ 69480 ANSE       → Index, Current year consumption
+    └── Sieva 7342   (3, PLACE DU MARCHÉ 69480 ANSE)       → Total, Current year
 ```
 
 A meter added later to an account shows up after reloading the integration. A meter
@@ -216,12 +241,35 @@ no longer returned by the portal becomes unavailable.
 
 ### Sensors
 
-For each meter:
+For each meter (`1234` = its internal id, see below):
 
 | Sensor | Description |
 | --- | --- |
-| **Index** (`sensor.<address>_index`) | Cumulated consumption in m³ (`total_increasing`). **Use this one in the Energy dashboard.** |
-| **Current year consumption** | Consumption of the current calendar year, in m³. The `par_annee` attribute gives the per-year breakdown. |
+| **Total** (`sensor.sieva_1234_total`) | Cumulated consumption in m³ (`total_increasing`). **Use this one in the Energy dashboard.** |
+| **Current year** (`sensor.sieva_1234_current_year`) | Consumption of the current calendar year, in m³. The `yearly` attribute gives the per-year breakdown. |
+
+Attributes shared by both sensors:
+
+| Attribute | Example | Description |
+| --- | --- | --- |
+| `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Served address |
+| `installation_point` | `6900000123` | Installation point number |
+| `meter` | `C15FA012345` | Physical meter serial number |
+
+You can rename the device in Home Assistant (e.g. "Home", "Parents").
+
+#### The three numbers
+
+The portal uses three different numbers for the same meter:
+
+| Number | Example | Where to see it | Use in the integration |
+| --- | --- | --- | --- |
+| Internal id (`pointDInstallationId`) | `1234` | Hidden on the portal (used by its requests) | Device name (`Sieva 1234`), entity ids, data retrieval |
+| Installation point number | `6900000123` | Portal → *Point d'installation* | `installation_point` attribute |
+| Meter serial number | `C15FA012345` | Portal → *Compteur*, and on the meter itself | `meter` attribute and device serial number |
+
+If the meter is replaced, its serial number changes but not the other two: the device
+and its history are kept.
 
 ### How it works
 
@@ -233,22 +281,22 @@ Every **6 hours**, for each account:
 3. for each meter, read the yearly consumption (`GetGraphRelevesData`, `Annee`
    granularity).
 
-The **Index** is the sum of these yearly values: it grows with every new value
+The **Total** is the sum of these yearly values: it grows with every new value
 published by Sieva. The portal publishes one value per day, so polling more often is
-pointless. To force a refresh: `homeassistant.update_entity` action on the Index
+pointless. To force a refresh: `homeassistant.update_entity` action on the Total
 sensor.
 
-> ℹ️ The Index starts at the beginning of the history available on the portal: it is
-> not the number shown on the physical meter. This has no impact on the Energy
+> ℹ️ The Total starts at the beginning of the history available on the portal: it is
+> not the index shown on the physical meter. This has no impact on the Energy
 > dashboard, which only uses increases.
 
-If the portal returns a lower total than before (reading correction), the Index keeps
+If the portal returns a lower total than before (reading correction), the Total keeps
 its previous value, so that statistics do not see it as a meter reset.
 
 ### Energy dashboard
 
 **Settings → Dashboards → Energy → Water consumption → Add water source** and pick
-the **Index** sensor.
+the **Total** sensor.
 
 If you also track someone else's account, do not add it to the Energy dashboard (it
 would be added to your own consumption): use a Statistics or History card instead.
@@ -265,12 +313,12 @@ integrations, and they are only sent to `ael.sieva.fr`.
 2. Update the integration and restart
 3. Add the integration from the UI
 4. In the Energy dashboard, replace the old sensor (`sensor.sieva_m3`) with the new
-   **Index** sensor
+   **Total** sensor
 
 ### Troubleshooting
 
 - **Diagnostics**: integration page → ⋮ menu → *Download diagnostics*. The file
-  contains the raw portal answers (credentials and addresses redacted).
+  contains the raw portal answers (credentials, addresses and numbers redacted).
 - **Debug logs**:
 
   ```yaml
@@ -279,7 +327,7 @@ integrations, and they are only sent to `ael.sieva.fr`.
       custom_components.sieva: debug
   ```
 
-- **Test outside Home Assistant** (prints discovered meters, raw answers and index):
+- **Test outside Home Assistant** (prints discovered meters, raw answers and total):
 
   ```bash
   python3 -m venv .venv && .venv/bin/pip install aiohttp
