@@ -7,7 +7,12 @@
 ## 🇫🇷 Français
 
 Intégration Home Assistant qui récupère la consommation d'eau depuis l'espace client
-[Sieva](https://sieva.fr/) (Val d'Azergues) : https://ael.sieva.fr.
+[SIEVA](https://sieva.fr/) : https://ael.sieva.fr.
+
+> ⚠️ **Uniquement pour les abonnés du SIEVA – Syndicat Intercommunal des Eaux du Val
+> d'Azergues** (Rhône), disposant d'un compte sur l'espace client
+> [ael.sieva.fr](https://ael.sieva.fr). Elle ne fonctionne pas avec d'autres
+> fournisseurs d'eau.
 
 ### Fonctionnalités
 
@@ -152,8 +157,12 @@ La CI GitHub exécute hassfest, la validation HACS et les tests.
 ## 🇬🇧 English
 
 Home Assistant integration that retrieves water consumption from the
-[Sieva](https://sieva.fr/) (Val d'Azergues, France) customer portal:
-https://ael.sieva.fr.
+[SIEVA](https://sieva.fr/) customer portal: https://ael.sieva.fr.
+
+> ⚠️ **Only for customers of SIEVA – Syndicat Intercommunal des Eaux du Val
+> d'Azergues** (Rhône, France), with an account on the
+> [ael.sieva.fr](https://ael.sieva.fr) customer portal. It does not work with other
+> water providers.
 
 ### Features
 
