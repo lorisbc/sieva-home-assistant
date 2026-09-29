@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 
 from .coordinator import SievaConfigEntry
 
-TO_REDACT = {CONF_USERNAME, CONF_PASSWORD, "address"}
+TO_REDACT = {CONF_USERNAME, CONF_PASSWORD, "address", "installation_point", "meter"}
 
 
 async def async_get_config_entry_diagnostics(

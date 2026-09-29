@@ -11,7 +11,7 @@ DAILY = {
     "datasets": [
         {
             "Id": 0,
-            "label": "6904900904",
+            "label": "6900000123",
             "data": [0.255000, 0.265000, 0.309000],
             "backgroundColor": [],
             "hoverBackgroundColor": None,
@@ -27,9 +27,9 @@ DELIVERY_POINTS = {
     "sEcho": 1,
     "aaData": [
         [
-            "6904900904",
+            "6900000123",
             "1, RUE DE LA PAIX  69380 CHASSELAY (France) ",
-            "6904900904",
+            "6900000123",
             "1, RUE DE LA PAIX 69380 CHASSELAY (France) ",
             "EAU et ASS Avec PF SIEVA",
             "",
@@ -37,7 +37,7 @@ DELIVERY_POINTS = {
             "",
             "",
             "<span class=\"fluide icon-tint icon-medium\" title='Eau' ></span>",
-            "4064",
+            "1234",
         ]
     ],
     "sMessage": None,
@@ -58,8 +58,8 @@ def test_graph_yearly_real_payload():
         "datasets": [
             {
                 "Id": 0,
-                "label": "6904900904",
-                "data": [93.263, 116.772],
+                "label": "6900000123",
+                "data": [90.125, 110.5],
                 "backgroundColor": ["rgb(0, 156, 206)", "rgb(0, 156, 206)"],
                 "hoverBackgroundColor": None,
             }
@@ -67,8 +67,8 @@ def test_graph_yearly_real_payload():
         "graphWidth": 0,
     }
     data = api.SievaData(yearly=api.parse_graph_payload(payload))
-    assert data.yearly == {"2025": 93.263, "2026": 116.772}
-    assert data.total == 210.035
+    assert data.yearly == {"2025": 90.125, "2026": 110.5}
+    assert data.total == 200.625
 
 
 def test_graph_yearly_and_meter_replacement():
@@ -91,14 +91,54 @@ def test_graph_unexpected_format():
 
 def test_delivery_points():
     assert api.parse_delivery_points(DELIVERY_POINTS) == {
-        "4064": "1, RUE DE LA PAIX 69380 CHASSELAY"
+        "1234": {
+            "address": "1, RUE DE LA PAIX 69380 CHASSELAY",
+            "installation_point": "6900000123",
+        }
     }
 
 
-def test_abonnements_from_landing_page():
+def test_subscriptions_from_landing_page():
     html = """
     <a href="/Portail/fr-FR/Usager/Usager/Profil/95">Profil</a>
-    <a href="/Portail/fr-FR/Usager/abonnement/detail/30377">Détail</a>
-    <div data-url="/Portail/fr-FR/Usager/Abonnement/GetSyntheseMini/30377?x=1"></div>
+    <a href="/Portail/fr-FR/Usager/abonnement/detail/12345">Détail</a>
+    <div data-url="/Portail/fr-FR/Usager/Abonnement/GetSyntheseMini/12345?x=1"></div>
     """
-    assert api.parse_abonnements(html) == ["30377"]
+    assert api.parse_subscriptions(html) == ["12345"]
+
+
+def test_meter_from_latest_reading():
+    # AjaxReleveSynchros (trimmed), not sorted on purpose
+    payload = {
+        "aaData": [
+            [
+                "OLDMETER",
+                "15/11/2023",
+                "Télérelevée",
+                "",
+                "557",
+                "Consommation EAU",
+                "45",
+            ],
+            [
+                "C15FA000001",
+                "15/05/2026",
+                "Télérelevée",
+                "",
+                "816",
+                "Consommation EAU",
+                "52",
+            ],
+            [
+                "C15FA000001",
+                "15/11/2025",
+                "Télérelevée",
+                "",
+                "764",
+                "Consommation EAU",
+                "62",
+            ],
+        ]
+    }
+    assert api.parse_meter(payload) == "C15FA000001"
+    assert api.parse_meter({"aaData": []}) == ""

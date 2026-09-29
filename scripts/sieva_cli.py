@@ -30,13 +30,15 @@ async def main() -> None:
         )
         points = await client.async_get_data()
         if not points:
-            print("Aucun point d'installation trouvé")
+            print("No installation point found")
         for point, data in points.items():
-            print(f"=== {point}: {data.address}")
+            print(
+                f"=== {point} | installation point {data.installation_point} | meter {data.meter} | {data.address}"
+            )
             print(json.dumps(data.raw, indent=2, ensure_ascii=False))
             for year, value in sorted(data.yearly.items()):
                 print(f"  {year}: {value} m³")
-            print(f"  INDEX: {data.total} m³")
+            print(f"  TOTAL: {data.total} m³")
 
 
 if __name__ == "__main__":

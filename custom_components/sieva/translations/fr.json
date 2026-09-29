@@ -31,11 +31,11 @@
   },
   "entity": {
     "sensor": {
-      "index": {
-        "name": "Index"
+      "total": {
+        "name": "Total"
       },
       "current_year": {
-        "name": "Consommation de l'année"
+        "name": "Current year"
       }
     }
   }
