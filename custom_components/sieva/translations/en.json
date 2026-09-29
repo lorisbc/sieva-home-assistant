@@ -3,17 +3,10 @@
     "step": {
       "user": {
         "title": "Sieva account",
-        "description": "Credentials of the https://ael.sieva.fr customer portal. The installation point is detected automatically.",
+        "description": "Credentials of the https://ael.sieva.fr customer portal. Every meter of the account is added automatically. Add the integration once per account.",
         "data": {
           "username": "Login",
           "password": "Password"
-        }
-      },
-      "delivery_point": {
-        "title": "Installation point",
-        "description": "Choose the meter to track. If there is no list, type the pointDInstallationId (see README).",
-        "data": {
-          "delivery_point": "Installation point"
         }
       },
       "reauth_confirm": {
@@ -28,10 +21,11 @@
       "invalid_auth": "Invalid login or password.",
       "cannot_connect": "Unable to reach the Sieva portal.",
       "invalid_data": "Logged in, but the consumption data could not be read. Check the installation point.",
-      "unknown": "Unexpected error."
+      "unknown": "Unexpected error.",
+      "no_delivery_point": "No meter found on this account."
     },
     "abort": {
-      "already_configured": "This installation point is already configured.",
+      "already_configured": "This account is already configured.",
       "reauth_successful": "Reauthentication successful."
     }
   },

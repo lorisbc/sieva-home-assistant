@@ -56,9 +56,10 @@ class SievaParseError(SievaError):
 
 @dataclass
 class SievaData:
-    """Consumption data returned by the portal."""
+    """Consumption of one installation point."""
 
     yearly: dict[str, float]
+    address: str = ""
     raw: Any = field(default=None, repr=False)
 
     @property
@@ -102,7 +103,7 @@ def parse_delivery_points(payload: Any) -> dict[str, str]:
             "Format AjaxPointDInstallationSynchros inattendu"
         ) from err
     return {
-        str(row[-1]): " ".join(str(row[1]).split())
+        str(row[-1]): " ".join(str(row[1]).replace("(France)", "").split())
         for row in rows
         if len(row) > 1 and str(row[-1]).isdigit()
     }
@@ -114,19 +115,14 @@ def parse_abonnements(html: str) -> list[str]:
 
 
 class SievaClient:
-    """Minimal client for the Sieva portal."""
+    """Minimal client for the Sieva portal (one account)."""
 
     def __init__(
-        self,
-        session: aiohttp.ClientSession,
-        login: str,
-        password: str,
-        delivery_point: str | None = None,
+        self, session: aiohttp.ClientSession, login: str, password: str
     ) -> None:
         self._session = session
         self._login = login
         self._password = password
-        self._delivery_point = str(delivery_point or "").strip()
 
     async def _request(self, method: str, url: str, **kwargs: Any) -> tuple[str, str]:
         """Perform a request, return ``(body, final_url)``."""
@@ -173,13 +169,12 @@ class SievaClient:
             raise SievaAuthError("Identifiants Sieva refusés")
         return body
 
-    async def async_get_delivery_points(self) -> dict[str, str]:
-        """Discover the installation points of the account.
+    async def _async_get_delivery_points(self, landing: str) -> dict[str, str]:
+        """List ``{pointDInstallationId: address}`` for every subscription.
 
         The portal keeps the "current subscription" in the session: open each
         subscription page, then list its installation points.
         """
-        landing = await self.async_login()
         points: dict[str, str] = {}
         for abonnement in parse_abonnements(landing):
             synthese = SYNTHESE_URL.format(abonnement)
@@ -191,21 +186,31 @@ class SievaClient:
                 headers={"Referer": synthese},
             )
             points.update(parse_delivery_points(payload))
-        _LOGGER.debug("Points d'installation trouvés: %s", points)
         return points
 
-    async def async_get_data(self) -> SievaData:
-        """Log in and fetch the yearly consumption."""
-        await self.async_login()
-        raw = await self._request_json(
+    async def _async_get_yearly(self, delivery_point: str) -> Any:
+        """Return the raw yearly consumption of an installation point."""
+        return await self._request_json(
             "POST",
             GRAPH_URL,
             json={
-                "pointDInstallationId": self._delivery_point,
+                "pointDInstallationId": delivery_point,
                 "dateDebut": "",
                 "dateFin": "",
                 "granularite": "Annee",
             },
         )
-        _LOGGER.debug("GetGraphRelevesData: %s", raw)
-        return SievaData(yearly=parse_graph_payload(raw), raw=raw)
+
+    async def async_get_data(self) -> dict[str, SievaData]:
+        """Log in once and fetch every installation point of the account."""
+        landing = await self.async_login()
+        points = await self._async_get_delivery_points(landing)
+        _LOGGER.debug("Points d'installation trouvés: %s", points)
+        data: dict[str, SievaData] = {}
+        for point, address in points.items():
+            raw = await self._async_get_yearly(point)
+            _LOGGER.debug("GetGraphRelevesData %s: %s", point, raw)
+            data[point] = SievaData(
+                yearly=parse_graph_payload(raw), address=address, raw=raw
+            )
+        return data

@@ -17,8 +17,8 @@ _LOGGER = logging.getLogger(__name__)
 type SievaConfigEntry = ConfigEntry[SievaCoordinator]
 
 
-class SievaCoordinator(DataUpdateCoordinator[SievaData]):
-    """Fetch the yearly consumption from the Sieva portal."""
+class SievaCoordinator(DataUpdateCoordinator[dict[str, SievaData]]):
+    """Fetch the yearly consumption of every installation point of an account."""
 
     config_entry: SievaConfigEntry
 
@@ -34,7 +34,7 @@ class SievaCoordinator(DataUpdateCoordinator[SievaData]):
         )
         self.client = client
 
-    async def _async_update_data(self) -> SievaData:
+    async def _async_update_data(self) -> dict[str, SievaData]:
         try:
             return await self.client.async_get_data()
         except SievaAuthError as err:

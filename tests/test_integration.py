@@ -6,100 +6,137 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.sieva.api import SievaAuthError, SievaData
-from custom_components.sieva.const import CONF_DELIVERY_POINT, DOMAIN
+from custom_components.sieva.api import SievaAuthError, SievaClient, SievaData
+from custom_components.sieva.const import DOMAIN
 
-CREDENTIALS = {CONF_USERNAME: "me@example.com", CONF_PASSWORD: "pwd"}
-USER_INPUT = {**CREDENTIALS, CONF_DELIVERY_POINT: "4064"}
-CLIENT = "custom_components.sieva.api.SievaClient.async_get_data"
-DISCOVER = "custom_components.sieva.api.SievaClient.async_get_delivery_points"
-
-
-def _data(**yearly: float) -> SievaData:
-    return SievaData(yearly={k.removeprefix("y"): v for k, v in yearly.items()})
+ACCOUNT_A = {CONF_USERNAME: "a@example.com", CONF_PASSWORD: "pwd"}
+ACCOUNT_B = {CONF_USERNAME: "b@example.com", CONF_PASSWORD: "pwd"}
+GET_DATA = "custom_components.sieva.api.SievaClient.async_get_data"
 
 
-async def test_config_flow_single_point(hass: HomeAssistant) -> None:
+def _point(address: str, **yearly: float) -> SievaData:
+    return SievaData(
+        yearly={k.removeprefix("y"): v for k, v in yearly.items()}, address=address
+    )
+
+
+async def test_config_flow(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     assert result["type"] is FlowResultType.FORM
 
-    with patch(DISCOVER, AsyncMock(side_effect=SievaAuthError)):
+    with patch(GET_DATA, AsyncMock(side_effect=SievaAuthError)):
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], CREDENTIALS
+            result["flow_id"], ACCOUNT_A
         )
     assert result["errors"] == {"base": "invalid_auth"}
 
-    with (
-        patch(DISCOVER, AsyncMock(return_value={"4064": "1 rue de la Paix"})),
-        patch(CLIENT, AsyncMock(return_value=_data(y2025=50.0))),
-    ):
+    with patch(GET_DATA, AsyncMock(return_value={})):
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], CREDENTIALS
+            result["flow_id"], ACCOUNT_A
+        )
+    assert result["errors"] == {"base": "no_delivery_point"}
+
+    with patch(GET_DATA, AsyncMock(return_value={"4064": _point("1 rue A", y2025=1)})):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], ACCOUNT_A
         )
         await hass.async_block_till_done()
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Sieva 1 rue de la Paix"
-    assert result["data"] == USER_INPUT
-    assert result["result"].unique_id == "4064"
+    assert result["title"] == "a@example.com"
+    assert result["data"] == ACCOUNT_A
+    assert result["result"].unique_id == "a@example.com"
 
-
-async def test_config_flow_several_points(hass: HomeAssistant) -> None:
+    # Same account again is refused.
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
-    with patch(DISCOVER, AsyncMock(return_value={"1": "A", "4064": "B"})):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], CREDENTIALS
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**ACCOUNT_A, CONF_USERNAME: "A@example.com "}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_several_accounts_and_meters(hass: HomeAssistant) -> None:
+    portal = {
+        "a@example.com": {
+            "4064": _point("1 RUE A 69380 CHASSELAY", y2025=50.0, y2026=12.5),
+            "5000": _point("2 RUE B 69380 CHASSELAY", y2026=3.0),
+        },
+        "b@example.com": {"7000": _point("3 RUE C 69001 LYON", y2026=7.0)},
+    }
+
+    async def fake_get_data(client: SievaClient) -> dict[str, SievaData]:
+        return portal[client._login]
+
+    entries = []
+    for account in (ACCOUNT_A, ACCOUNT_B):
+        entry = MockConfigEntry(
+            domain=DOMAIN, data=account, unique_id=account[CONF_USERNAME]
         )
-    assert result["step_id"] == "delivery_point"
+        entry.add_to_hass(hass)
+        entries.append(entry)
 
-    with patch(CLIENT, AsyncMock(return_value=_data(y2025=50.0))):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_DELIVERY_POINT: "4064"}
-        )
+    with patch(GET_DATA, autospec=True, side_effect=fake_get_data):
+        # Setting up the domain loads every account.
+        assert await hass.config_entries.async_setup(entries[0].entry_id)
         await hass.async_block_till_done()
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == USER_INPUT
+        assert all(e.state is config_entries.ConfigEntryState.LOADED for e in entries)
 
+        devices = dr.async_get(hass)
+        assert {
+            device.name
+            for entry in entries
+            for device in dr.async_entries_for_config_entry(devices, entry.entry_id)
+        } == {
+            "1 RUE A 69380 CHASSELAY",
+            "2 RUE B 69380 CHASSELAY",
+            "3 RUE C 69001 LYON",
+        }
 
-async def test_sensors_and_monotonic_index(hass: HomeAssistant) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT, unique_id="4064")
-    entry.add_to_hass(hass)
-
-    mock = AsyncMock(return_value=_data(y2025=50.0, y2026=12.5))
-    with patch(CLIENT, mock):
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        index = hass.states.get("sensor.compteur_d_eau_sieva_4064_index")
-        assert index is not None, hass.states.async_entity_ids()
+        index = hass.states.get("sensor.1_rue_a_69380_chasselay_index")
         assert float(index.state) == 62.5
         assert index.attributes["device_class"] == "water"
         assert index.attributes["state_class"] == "total_increasing"
         assert index.attributes["unit_of_measurement"] == "m³"
+        assert (
+            float(hass.states.get("sensor.2_rue_b_69380_chasselay_index").state) == 3.0
+        )
+        assert float(hass.states.get("sensor.3_rue_c_69001_lyon_index").state) == 7.0
 
         # A lower total must not be published (would be seen as a meter reset).
-        mock.return_value = _data(y2025=50.0, y2026=10.0)
-        await entry.runtime_data.async_refresh()
+        portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=10.0)
+        await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
         assert float(hass.states.get(index.entity_id).state) == 62.5
 
-        mock.return_value = _data(y2025=50.0, y2026=13.0)
-        await entry.runtime_data.async_refresh()
+        portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=13.0)
+        await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
         assert float(hass.states.get(index.entity_id).state) == 63.0
 
-    assert await hass.config_entries.async_unload(entry.entry_id)
+        # A meter no longer returned by the portal becomes unavailable.
+        del portal["a@example.com"]["5000"]
+        await entries[0].runtime_data.async_refresh()
+        await hass.async_block_till_done()
+        assert (
+            hass.states.get("sensor.2_rue_b_69380_chasselay_index").state
+            == "unavailable"
+        )
+
+    for entry in entries:
+        assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 async def test_auth_error_starts_reauth(hass: HomeAssistant) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT, unique_id="4064")
+    entry = MockConfigEntry(domain=DOMAIN, data=ACCOUNT_A, unique_id="a@example.com")
     entry.add_to_hass(hass)
-    with patch(CLIENT, AsyncMock(side_effect=SievaAuthError)):
+    with patch(GET_DATA, AsyncMock(side_effect=SievaAuthError)):
         assert not await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
     flows = hass.config_entries.flow.async_progress()

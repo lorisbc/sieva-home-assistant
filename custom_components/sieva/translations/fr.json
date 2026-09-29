@@ -3,17 +3,10 @@
     "step": {
       "user": {
         "title": "Compte Sieva",
-        "description": "Identifiants de l'espace client https://ael.sieva.fr. Le point d'installation est détecté automatiquement.",
+        "description": "Identifiants de l'espace client https://ael.sieva.fr. Tous les compteurs du compte sont ajoutés automatiquement. Ajoutez l'intégration une fois par compte.",
         "data": {
           "username": "Identifiant",
           "password": "Mot de passe"
-        }
-      },
-      "delivery_point": {
-        "title": "Point d'installation",
-        "description": "Choisissez le compteur à suivre. Si la liste est vide, saisissez le pointDInstallationId (voir README).",
-        "data": {
-          "delivery_point": "Point d'installation"
         }
       },
       "reauth_confirm": {
@@ -28,10 +21,11 @@
       "invalid_auth": "Identifiant ou mot de passe incorrect.",
       "cannot_connect": "Impossible de joindre le portail Sieva.",
       "invalid_data": "Connexion réussie mais les données de consommation sont illisibles. Vérifiez le point d'installation.",
-      "unknown": "Erreur inattendue."
+      "unknown": "Erreur inattendue.",
+      "no_delivery_point": "Aucun compteur trouvé sur ce compte."
     },
     "abort": {
-      "already_configured": "Ce point d'installation est déjà configuré.",
+      "already_configured": "Ce compte est déjà configuré.",
       "reauth_successful": "Reconnexion réussie."
     }
   },

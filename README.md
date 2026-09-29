@@ -8,16 +8,20 @@ Intégration Home Assistant qui récupère la consommation d'eau depuis l'espace
 - Compatible **Home Assistant 2025.2+**, testée sur **2026.9**
 - Compatible avec le **tableau de bord Énergie** (consommation d'eau)
 
-## Capteurs
+## Appareils et capteurs
 
-| Entité | Description |
+Chaque compte Sieva est une entrée de l'intégration. Chaque compteur (point
+d'installation) du compte est détecté automatiquement et devient un appareil nommé
+d'après **son adresse**, avec deux capteurs :
+
+| Capteur | Description |
 | --- | --- |
-| `sensor.compteur_d_eau_sieva_<pi>_index` | Index en m³ = somme des consommations annuelles depuis le début du contrat (`total_increasing`, à utiliser dans le tableau de bord Énergie) |
-| `sensor.compteur_d_eau_sieva_<pi>_consommation_de_l_annee` | Consommation de l'année en cours. L'attribut `par_annee` donne le détail par année |
+| **Index** (`sensor.<adresse>_index`) | Somme des consommations annuelles en m³ (`total_increasing`), à utiliser dans le tableau de bord Énergie |
+| **Consommation de l'année** | Consommation de l'année en cours. L'attribut `par_annee` donne le détail par année |
 
-Les données sont interrogées toutes les 6 heures via l'appel
+Les données sont récupérées toutes les 6 heures (une connexion par compte) via
 `GetGraphRelevesData` (granularité `Annee`). Si le portail renvoie un total inférieur
-au précédent (correction de relevé), l'index conserve l'ancienne valeur pour ne pas
+au précédent (correction de relevé), l'index garde l'ancienne valeur pour ne pas
 fausser les statistiques.
 
 ## Installation
@@ -37,20 +41,11 @@ puis redémarrer Home Assistant.
 ## Configuration
 
 **Paramètres → Appareils et services → Ajouter une intégration → Sieva**, puis saisir
-l'identifiant et le mot de passe de l'espace client.
+l'identifiant et le mot de passe de l'espace client. Tous les compteurs du compte sont
+ajoutés automatiquement.
 
-Le point d'installation (`pointDInstallationId`) est détecté automatiquement : si le
-compte en a plusieurs, une liste est proposée.
-
-<details>
-<summary>Si la détection échoue (saisie manuelle)</summary>
-
-1. Se connecter sur https://ael.sieva.fr et ouvrir la page **Consommations**
-2. Outils de développement du navigateur (F12) → onglet **Réseau**
-3. La requête `GetGraphRelevesData` contient `"pointDInstallationId":"XXXX"` :
-   `XXXX` est la valeur à saisir (ce n'est pas le numéro de l'URL `/Consommations/NNNNN`).
-
-</details>
+**Plusieurs comptes** : ajoutez l'intégration une fois par compte. Un compteur ajouté
+plus tard au compte apparaît après un rechargement de l'intégration.
 
 Les identifiants sont stockés par Home Assistant dans la configuration de l'intégration
 (le portail Sieva ne propose pas d'API à jeton). Si le mot de passe change, Home
@@ -85,8 +80,8 @@ dans le tableau de bord Énergie, remplacez-le par le nouveau capteur **Index**.
 - **Tester hors Home Assistant** :
 
   ```bash
-  pip install aiohttp
-  SIEVA_LOGIN=... SIEVA_PASSWORD=... python scripts/sieva_cli.py
+  python3 -m venv .venv && .venv/bin/pip install aiohttp
+  SIEVA_LOGIN=... SIEVA_PASSWORD=... .venv/bin/python scripts/sieva_cli.py
   ```
 
 ## Développement

@@ -1,9 +1,8 @@
 """Test the Sieva client outside Home Assistant.
 
 Usage:
-    pip install aiohttp
-    SIEVA_LOGIN=... SIEVA_PASSWORD=... python scripts/sieva_cli.py
-    (SIEVA_PI=... to force the installation point)
+    python3 -m venv .venv && .venv/bin/pip install aiohttp
+    SIEVA_LOGIN=... SIEVA_PASSWORD=... .venv/bin/python scripts/sieva_cli.py
 """
 
 import asyncio
@@ -11,7 +10,6 @@ import importlib.util
 import json
 import logging
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -24,50 +22,21 @@ sys.modules["sieva_api"] = api
 _spec.loader.exec_module(api)
 
 
-async def explore(session: aiohttp.ClientSession, login: str, password: str) -> None:
-    """Show where the portal lands after login and which pages it links to."""
-    client = api.SievaClient(session, login, password)
-    landing = await client.async_login()
-    title = re.search(r"<title>(.*?)</title>", landing, re.S)
-    print(f"Page d'arrivée: {len(landing)} caractères, titre: {title and title.group(1).strip()!r}")
-    print(f"Formulaire de login présent: {'id=\"MotDePasse\"' in landing}")
-    async with session.get(api.BASE_URL + "/Usager") as resp:
-        print(f"GET /Usager -> {resp.status} {resp.url}")
-    print("--- Liens /Usager/ de la page d'arrivée ---")
-    for link in sorted(set(re.findall(r'(?:href|action|data-url)="([^"]*Usager[^"]*)"', landing))):
-        print(f"  {link}")
-    print("--- Liens contenant Abonnement (tous attributs / JS) ---")
-    for link in sorted(set(re.findall(r"[\w/.-]*Abonnement[\w/.?=&-]*", landing))):
-        print(f"  {link}")
-
-
 async def main() -> None:
     logging.basicConfig(level=logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
-    login, password = os.environ["SIEVA_LOGIN"], os.environ["SIEVA_PASSWORD"]
     async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar()) as session:
-        if os.getenv("SIEVA_EXPLORE"):
-            await explore(session, login, password)
-            return
-        points = await api.SievaClient(
-            session, login, password
-        ).async_get_delivery_points()
-        print("--- Points d'installation ---")
-        for point, address in points.items():
-            print(f"  {point}: {address}")
-
-        delivery_point = os.getenv("SIEVA_PI") or next(iter(points), None)
-        if delivery_point is None:
-            raise SystemExit("Aucun point trouvé, relancez avec SIEVA_PI=...")
-
-        data = await api.SievaClient(
-            session, login, password, delivery_point
-        ).async_get_data()
-        print(f"--- GetGraphRelevesData ({delivery_point}, brut) ---")
-        print(json.dumps(data.raw, indent=2, ensure_ascii=False))
-        print("--- Par année ---")
-        for year, value in sorted(data.yearly.items()):
-            print(f"  {year}: {value} m³")
-        print(f"INDEX: {data.total} m³")
+        client = api.SievaClient(
+            session, os.environ["SIEVA_LOGIN"], os.environ["SIEVA_PASSWORD"]
+        )
+        points = await client.async_get_data()
+        if not points:
+            print("Aucun point d'installation trouvé")
+        for point, data in points.items():
+            print(f"=== {point}: {data.address}")
+            print(json.dumps(data.raw, indent=2, ensure_ascii=False))
+            for year, value in sorted(data.yearly.items()):
+                print(f"  {year}: {value} m³")
+            print(f"  INDEX: {data.total} m³")
 
 
 if __name__ == "__main__":

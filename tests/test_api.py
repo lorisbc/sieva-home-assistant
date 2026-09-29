@@ -91,7 +91,7 @@ def test_graph_unexpected_format():
 
 def test_delivery_points():
     assert api.parse_delivery_points(DELIVERY_POINTS) == {
-        "4064": "1, RUE DE LA PAIX 69380 CHASSELAY (France)"
+        "4064": "1, RUE DE LA PAIX 69380 CHASSELAY"
     }
 
 
