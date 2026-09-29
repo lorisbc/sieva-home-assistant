@@ -111,9 +111,13 @@ async def test_several_accounts_and_meters(
         assert total.attributes["address"] == "1 RUE A 69380 CHASSELAY"
         assert total.attributes["installation_point"] == "6904900904"
         assert total.attributes["meter"] == "C15FA000001"
-        device = dr.async_get(hass).async_get_device_by_identifier(
-            (DOMAIN, "4064"), entries[0].entry_id
-        )
+        (device,) = [
+            device
+            for device in dr.async_entries_for_config_entry(
+                dr.async_get(hass), entries[0].entry_id
+            )
+            if (DOMAIN, "4064") in device.identifiers
+        ]
         assert device.name == "Sieva 4064"
         assert device.serial_number == "C15FA000001"
         current_year = hass.states.get("sensor.sieva_4064_current_year")
