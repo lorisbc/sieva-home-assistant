@@ -11,6 +11,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -23,10 +24,30 @@ sys.modules["sieva_api"] = api
 _spec.loader.exec_module(api)
 
 
+async def explore(session: aiohttp.ClientSession, login: str, password: str) -> None:
+    """Show where the portal lands after login and which pages it links to."""
+    client = api.SievaClient(session, login, password)
+    landing = await client.async_login()
+    title = re.search(r"<title>(.*?)</title>", landing, re.S)
+    print(f"Page d'arrivée: {len(landing)} caractères, titre: {title and title.group(1).strip()!r}")
+    print(f"Formulaire de login présent: {'id=\"MotDePasse\"' in landing}")
+    async with session.get(api.BASE_URL + "/Usager") as resp:
+        print(f"GET /Usager -> {resp.status} {resp.url}")
+    print("--- Liens /Usager/ de la page d'arrivée ---")
+    for link in sorted(set(re.findall(r'(?:href|action|data-url)="([^"]*Usager[^"]*)"', landing))):
+        print(f"  {link}")
+    print("--- Liens contenant Abonnement (tous attributs / JS) ---")
+    for link in sorted(set(re.findall(r"[\w/.-]*Abonnement[\w/.?=&-]*", landing))):
+        print(f"  {link}")
+
+
 async def main() -> None:
     logging.basicConfig(level=logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
     login, password = os.environ["SIEVA_LOGIN"], os.environ["SIEVA_PASSWORD"]
     async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar()) as session:
+        if os.getenv("SIEVA_EXPLORE"):
+            await explore(session, login, password)
+            return
         points = await api.SievaClient(
             session, login, password
         ).async_get_delivery_points()

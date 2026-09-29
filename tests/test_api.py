@@ -51,6 +51,26 @@ def test_graph_daily_grouped_by_year():
     )
 
 
+def test_graph_yearly_real_payload():
+    payload = {
+        "Id": 0,
+        "labels": ["01/01/2025", "01/01/2026"],
+        "datasets": [
+            {
+                "Id": 0,
+                "label": "6904900904",
+                "data": [93.263, 116.772],
+                "backgroundColor": ["rgb(0, 156, 206)", "rgb(0, 156, 206)"],
+                "hoverBackgroundColor": None,
+            }
+        ],
+        "graphWidth": 0,
+    }
+    data = api.SievaData(yearly=api.parse_graph_payload(payload))
+    assert data.yearly == {"2025": 93.263, "2026": 116.772}
+    assert data.total == 210.035
+
+
 def test_graph_yearly_and_meter_replacement():
     payload = {
         "labels": ["2025", "2026"],
