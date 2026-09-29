@@ -93,3 +93,12 @@ def test_delivery_points():
     assert api.parse_delivery_points(DELIVERY_POINTS) == {
         "4064": "1, RUE DE LA PAIX 69380 CHASSELAY (France)"
     }
+
+
+def test_abonnements_from_landing_page():
+    html = """
+    <a href="/Portail/fr-FR/Usager/Usager/Profil/95">Profil</a>
+    <a href="/Portail/fr-FR/Usager/abonnement/detail/30377">Détail</a>
+    <div data-url="/Portail/fr-FR/Usager/Abonnement/GetSyntheseMini/30377?x=1"></div>
+    """
+    assert api.parse_abonnements(html) == ["30377"]

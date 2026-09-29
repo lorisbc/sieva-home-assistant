@@ -34,9 +34,7 @@ DATATABLES_FORM = {"sEcho": "1", "iDisplayStart": "0", "iDisplayLength": "-1"}
 _TOKEN_RE = re.compile(
     r'name="__RequestVerificationToken"[^>]*?value="([^"]+)"', re.IGNORECASE
 )
-_ABONNEMENT_RE = re.compile(
-    r"/Usager/Abonnement/(?:Synthese|Detail|Consommations|Factures)/(\d+)"
-)
+_ABONNEMENT_RE = re.compile(r"/Usager/Abonnement/\w+/(\d+)", re.IGNORECASE)
 _YEAR_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
 
 
@@ -110,6 +108,11 @@ def parse_delivery_points(payload: Any) -> dict[str, str]:
     }
 
 
+def parse_abonnements(html: str) -> list[str]:
+    """Extract the subscription ids linked from a portal page."""
+    return list(dict.fromkeys(_ABONNEMENT_RE.findall(html)))
+
+
 class SievaClient:
     """Minimal client for the Sieva portal."""
 
@@ -178,7 +181,7 @@ class SievaClient:
         """
         landing = await self.async_login()
         points: dict[str, str] = {}
-        for abonnement in dict.fromkeys(_ABONNEMENT_RE.findall(landing)):
+        for abonnement in parse_abonnements(landing):
             synthese = SYNTHESE_URL.format(abonnement)
             await self._request("GET", synthese)
             payload = await self._request_json(
