@@ -40,7 +40,7 @@ async def async_setup_entry(
         entity
         for point in coordinator.data
         for entity in (
-            SievaIndexSensor(coordinator, point),
+            SievaTotalSensor(coordinator, point),
             SievaCurrentYearSensor(coordinator, point),
         )
     )
@@ -66,7 +66,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
             name=f"Sieva {point}",
             manufacturer="Sieva",
             model="Compteur d'eau",
-            serial_number=point,
+            serial_number=coordinator.data[point].reference or point,
             entry_type=DeviceEntryType.SERVICE,
             configuration_url="https://ael.sieva.fr/Portail/fr-FR/Connexion/Login",
         )
@@ -84,20 +84,20 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
     def extra_state_attributes(self) -> dict[str, Any]:
         if (data := self.point_data) is None:
             return {}
-        return {"adresse": data.address}
+        return {"adresse": data.address, "point_d_installation": data.reference}
 
 
-class SievaIndexSensor(SievaEntity, RestoreSensor):
+class SievaTotalSensor(SievaEntity, RestoreSensor):
     """Cumulated consumption since the start of the contract (m³).
 
     This is the sensor to use in the Energy dashboard.
     """
 
     def __init__(self, coordinator: SievaCoordinator, point: str) -> None:
-        super().__init__(coordinator, point, "index")
+        super().__init__(coordinator, point, "total")
 
     async def async_added_to_hass(self) -> None:
-        """Restore the last known index, then apply the fresh data."""
+        """Restore the last known total, then apply the fresh data."""
         await super().async_added_to_hass()
         last = await self.async_get_last_sensor_data()
         if last is not None and isinstance(last.native_value, (int, float, Decimal)):
@@ -115,10 +115,10 @@ class SievaIndexSensor(SievaEntity, RestoreSensor):
             return
         previous = self._attr_native_value
         # A lower value would be seen as a meter reset by the statistics and
-        # would count the whole index again: keep the previous value instead.
+        # would count the whole total again: keep the previous value instead.
         if isinstance(previous, (int, float)) and data.total < previous:
             _LOGGER.warning(
-                "Index Sieva %s en baisse (%s -> %s m³), valeur précédente conservée",
+                "Total Sieva %s en baisse (%s -> %s m³), valeur précédente conservée",
                 self._point,
                 previous,
                 data.total,

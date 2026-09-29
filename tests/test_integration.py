@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+from freezegun.api import FrozenDateTimeFactory
+
 from homeassistant import config_entries
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
@@ -19,7 +21,9 @@ GET_DATA = "custom_components.sieva.api.SievaClient.async_get_data"
 
 def _point(address: str, **yearly: float) -> SievaData:
     return SievaData(
-        yearly={k.removeprefix("y"): v for k, v in yearly.items()}, address=address
+        yearly={k.removeprefix("y"): v for k, v in yearly.items()},
+        address=address,
+        reference="6904900904",
     )
 
 
@@ -62,7 +66,10 @@ async def test_config_flow(hass: HomeAssistant) -> None:
     assert result["reason"] == "already_configured"
 
 
-async def test_several_accounts_and_meters(hass: HomeAssistant) -> None:
+async def test_several_accounts_and_meters(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-09-29 12:00:00+00:00")
     portal = {
         "a@example.com": {
             "4064": _point("1 RUE A 69380 CHASSELAY", y2025=50.0, y2026=12.5),
@@ -95,31 +102,35 @@ async def test_several_accounts_and_meters(hass: HomeAssistant) -> None:
             for device in dr.async_entries_for_config_entry(devices, entry.entry_id)
         } == {"Sieva 4064", "Sieva 5000", "Sieva 7000"}
 
-        index = hass.states.get("sensor.sieva_4064_index")
-        assert float(index.state) == 62.5
-        assert index.attributes["device_class"] == "water"
-        assert index.attributes["state_class"] == "total_increasing"
-        assert index.attributes["unit_of_measurement"] == "m³"
-        assert index.attributes["adresse"] == "1 RUE A 69380 CHASSELAY"
-        assert float(hass.states.get("sensor.sieva_5000_index").state) == 3.0
-        assert float(hass.states.get("sensor.sieva_7000_index").state) == 7.0
+        total = hass.states.get("sensor.sieva_4064_total")
+        assert float(total.state) == 62.5
+        assert total.attributes["device_class"] == "water"
+        assert total.attributes["state_class"] == "total_increasing"
+        assert total.attributes["unit_of_measurement"] == "m³"
+        assert total.attributes["adresse"] == "1 RUE A 69380 CHASSELAY"
+        assert total.attributes["point_d_installation"] == "6904900904"
+        current_year = hass.states.get("sensor.sieva_4064_current_year")
+        assert float(current_year.state) == 12.5
+        assert current_year.attributes["par_annee"] == {"2025": 50.0, "2026": 12.5}
+        assert float(hass.states.get("sensor.sieva_5000_total").state) == 3.0
+        assert float(hass.states.get("sensor.sieva_7000_total").state) == 7.0
 
         # A lower total must not be published (would be seen as a meter reset).
         portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=10.0)
         await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
-        assert float(hass.states.get(index.entity_id).state) == 62.5
+        assert float(hass.states.get(total.entity_id).state) == 62.5
 
         portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=13.0)
         await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
-        assert float(hass.states.get(index.entity_id).state) == 63.0
+        assert float(hass.states.get(total.entity_id).state) == 63.0
 
         # A meter no longer returned by the portal becomes unavailable.
         del portal["a@example.com"]["5000"]
         await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
-        assert hass.states.get("sensor.sieva_5000_index").state == "unavailable"
+        assert hass.states.get("sensor.sieva_5000_total").state == "unavailable"
 
     for entry in entries:
         assert await hass.config_entries.async_unload(entry.entry_id)

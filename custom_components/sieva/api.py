@@ -60,6 +60,7 @@ class SievaData:
 
     yearly: dict[str, float]
     address: str = ""
+    reference: str = ""
     raw: Any = field(default=None, repr=False)
 
     @property
@@ -73,7 +74,7 @@ def parse_graph_payload(payload: Any) -> dict[str, float]:
 
     The portal returns Chart.js data: ``{"labels": [...], "datasets":
     [{"label": "<meter>", "data": [...]}]}``. Every dataset (one per meter)
-    is summed so a meter replacement does not break the index.
+    is summed so a meter replacement does not break the total.
     """
     try:
         labels = payload["labels"]
@@ -94,8 +95,11 @@ def parse_graph_payload(payload: Any) -> dict[str, float]:
     return result
 
 
-def parse_delivery_points(payload: Any) -> dict[str, str]:
-    """Extract ``{pointDInstallationId: address}`` from the DataTables answer."""
+def parse_delivery_points(payload: Any) -> dict[str, dict[str, str]]:
+    """Extract ``{pointDInstallationId: {address, reference}}`` from the DataTables answer.
+
+    Row layout: ``[reference, address, reference, address, contract, ..., id]``.
+    """
     try:
         rows = payload["aaData"]
     except (TypeError, KeyError) as err:
@@ -103,7 +107,10 @@ def parse_delivery_points(payload: Any) -> dict[str, str]:
             "Format AjaxPointDInstallationSynchros inattendu"
         ) from err
     return {
-        str(row[-1]): " ".join(str(row[1]).replace("(France)", "").split())
+        str(row[-1]): {
+            "address": " ".join(str(row[1]).replace("(France)", "").split()),
+            "reference": str(row[0]).strip(),
+        }
         for row in rows
         if len(row) > 1 and str(row[-1]).isdigit()
     }
@@ -169,13 +176,15 @@ class SievaClient:
             raise SievaAuthError("Identifiants Sieva refusés")
         return body
 
-    async def _async_get_delivery_points(self, landing: str) -> dict[str, str]:
-        """List ``{pointDInstallationId: address}`` for every subscription.
+    async def _async_get_delivery_points(
+        self, landing: str
+    ) -> dict[str, dict[str, str]]:
+        """List the installation points of every subscription.
 
         The portal keeps the "current subscription" in the session: open each
         subscription page, then list its installation points.
         """
-        points: dict[str, str] = {}
+        points: dict[str, dict[str, str]] = {}
         for abonnement in parse_abonnements(landing):
             synthese = SYNTHESE_URL.format(abonnement)
             await self._request("GET", synthese)
@@ -207,10 +216,8 @@ class SievaClient:
         points = await self._async_get_delivery_points(landing)
         _LOGGER.debug("Points d'installation trouvés: %s", points)
         data: dict[str, SievaData] = {}
-        for point, address in points.items():
+        for point, info in points.items():
             raw = await self._async_get_yearly(point)
             _LOGGER.debug("GetGraphRelevesData %s: %s", point, raw)
-            data[point] = SievaData(
-                yearly=parse_graph_payload(raw), address=address, raw=raw
-            )
+            data[point] = SievaData(yearly=parse_graph_payload(raw), raw=raw, **info)
         return data
