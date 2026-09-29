@@ -93,21 +93,16 @@ async def test_several_accounts_and_meters(hass: HomeAssistant) -> None:
             device.name
             for entry in entries
             for device in dr.async_entries_for_config_entry(devices, entry.entry_id)
-        } == {
-            "1 RUE A 69380 CHASSELAY",
-            "2 RUE B 69380 CHASSELAY",
-            "3 RUE C 69001 LYON",
-        }
+        } == {"Sieva 4064", "Sieva 5000", "Sieva 7000"}
 
-        index = hass.states.get("sensor.1_rue_a_69380_chasselay_index")
+        index = hass.states.get("sensor.sieva_4064_index")
         assert float(index.state) == 62.5
         assert index.attributes["device_class"] == "water"
         assert index.attributes["state_class"] == "total_increasing"
         assert index.attributes["unit_of_measurement"] == "m³"
-        assert (
-            float(hass.states.get("sensor.2_rue_b_69380_chasselay_index").state) == 3.0
-        )
-        assert float(hass.states.get("sensor.3_rue_c_69001_lyon_index").state) == 7.0
+        assert index.attributes["adresse"] == "1 RUE A 69380 CHASSELAY"
+        assert float(hass.states.get("sensor.sieva_5000_index").state) == 3.0
+        assert float(hass.states.get("sensor.sieva_7000_index").state) == 7.0
 
         # A lower total must not be published (would be seen as a meter reset).
         portal["a@example.com"]["4064"] = _point("1 RUE A", y2025=50.0, y2026=10.0)
@@ -124,10 +119,7 @@ async def test_several_accounts_and_meters(hass: HomeAssistant) -> None:
         del portal["a@example.com"]["5000"]
         await entries[0].runtime_data.async_refresh()
         await hass.async_block_till_done()
-        assert (
-            hass.states.get("sensor.2_rue_b_69380_chasselay_index").state
-            == "unavailable"
-        )
+        assert hass.states.get("sensor.sieva_5000_index").state == "unavailable"
 
     for entry in entries:
         assert await hass.config_entries.async_unload(entry.entry_id)

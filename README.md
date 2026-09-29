@@ -21,7 +21,7 @@ Intégration Home Assistant qui récupère la consommation d'eau depuis l'espace
   `pointDInstallationId`)
 - **Plusieurs comptes** (ex. le vôtre et celui de vos parents) et **plusieurs compteurs
   par compte**
-- Un appareil par compteur, **nommé d'après son adresse**
+- Un appareil par compteur, nommé d'après son **point d'installation** (ex. `Sieva 4064`), avec l'adresse en attribut
 - Compatible avec le **tableau de bord Énergie** (consommation d'eau)
 - Ressaisie du mot de passe proposée automatiquement s'il change
 - Diagnostics téléchargeables (identifiants et adresses masqués)
@@ -57,10 +57,10 @@ demande à être ressaisi.
 ```
 Sieva
 ├── moi@example.com
-│   ├── 1, RUE DE LA PAIX 69380 CHASSELAY   → Index, Consommation de l'année
-│   └── 2, RUE DU LAC 69380 CHASSELAY       → Index, Consommation de l'année
+│   ├── Sieva 4064   (1, RUE DE LA PAIX 69380 CHASSELAY)   → Index, Consommation de l'année
+│   └── Sieva 5120   (2, RUE DU LAC 69380 CHASSELAY)       → Index, Consommation de l'année
 └── parents@example.com
-    └── 3, PLACE DU MARCHÉ 69480 ANSE       → Index, Consommation de l'année
+    └── Sieva 7342   (3, PLACE DU MARCHÉ 69480 ANSE)       → Index, Consommation de l'année
 ```
 
 Un compteur ajouté plus tard sur un compte apparaît après un rechargement de
@@ -68,12 +68,15 @@ l'intégration. Un compteur qui disparaît du portail passe en « indisponible �
 
 ### Capteurs
 
-Pour chaque compteur :
+Pour chaque compteur (`4064` = son point d'installation) :
 
 | Capteur | Description |
 | --- | --- |
-| **Index** (`sensor.<adresse>_index`) | Consommation cumulée en m³ (`total_increasing`). **À utiliser dans le tableau de bord Énergie.** |
-| **Consommation de l'année** | Consommation de l'année civile en cours, en m³. L'attribut `par_annee` donne le détail par année. |
+| **Index** (`sensor.sieva_4064_index`) | Consommation cumulée en m³ (`total_increasing`). **À utiliser dans le tableau de bord Énergie.** |
+| **Consommation de l'année** (`sensor.sieva_4064_consommation_de_l_annee`) | Consommation de l'année civile en cours, en m³. L'attribut `par_annee` donne le détail par année. |
+
+Chaque capteur a un attribut `adresse` indiquant l'adresse desservie. Vous pouvez
+renommer l'appareil dans Home Assistant (ex. « Maison », « Parents »).
 
 ### Fonctionnement
 
@@ -170,7 +173,7 @@ Home Assistant integration that retrieves water consumption from the
 - **Automatic meter discovery** (no need to look up the `pointDInstallationId`)
 - **Several accounts** (e.g. yours and your parents') and **several meters per
   account**
-- One device per meter, **named after its address**
+- One device per meter, named after its **installation point** (e.g. `Sieva 4064`), with the address as an attribute
 - Works with the **Energy dashboard** (water consumption)
 - Automatic re-authentication prompt when the password changes
 - Downloadable diagnostics (credentials and addresses redacted)
@@ -205,10 +208,10 @@ again.
 ```
 Sieva
 ├── me@example.com
-│   ├── 1, RUE DE LA PAIX 69380 CHASSELAY   → Index, Current year consumption
-│   └── 2, RUE DU LAC 69380 CHASSELAY       → Index, Current year consumption
+│   ├── Sieva 4064   (1, RUE DE LA PAIX 69380 CHASSELAY)   → Index, Current year consumption
+│   └── Sieva 5120   (2, RUE DU LAC 69380 CHASSELAY)       → Index, Current year consumption
 └── parents@example.com
-    └── 3, PLACE DU MARCHÉ 69480 ANSE       → Index, Current year consumption
+    └── Sieva 7342   (3, PLACE DU MARCHÉ 69480 ANSE)       → Index, Current year consumption
 ```
 
 A meter added later to an account shows up after reloading the integration. A meter
@@ -216,12 +219,15 @@ no longer returned by the portal becomes unavailable.
 
 ### Sensors
 
-For each meter:
+For each meter (`4064` = its installation point):
 
 | Sensor | Description |
 | --- | --- |
-| **Index** (`sensor.<address>_index`) | Cumulated consumption in m³ (`total_increasing`). **Use this one in the Energy dashboard.** |
-| **Current year consumption** | Consumption of the current calendar year, in m³. The `par_annee` attribute gives the per-year breakdown. |
+| **Index** (`sensor.sieva_4064_index`) | Cumulated consumption in m³ (`total_increasing`). **Use this one in the Energy dashboard.** |
+| **Current year consumption** (`sensor.sieva_4064_current_year_consumption`) | Consumption of the current calendar year, in m³. The `par_annee` attribute gives the per-year breakdown. |
+
+Each sensor has an `adresse` attribute with the served address. You can rename the
+device in Home Assistant (e.g. "Home", "Parents").
 
 ### How it works
 

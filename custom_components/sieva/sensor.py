@@ -63,7 +63,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
         self._attr_unique_id = f"{point}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, point)},
-            name=coordinator.data[point].address or f"Sieva {point}",
+            name=f"Sieva {point}",
             manufacturer="Sieva",
             model="Compteur d'eau",
             serial_number=point,
@@ -79,6 +79,12 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
     @property
     def available(self) -> bool:
         return super().available and self.point_data is not None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        if (data := self.point_data) is None:
+            return {}
+        return {"adresse": data.address}
 
 
 class SievaIndexSensor(SievaEntity, RestoreSensor):
@@ -138,7 +144,8 @@ class SievaCurrentYearSensor(SievaEntity, SensorEntity):
         if (data := self.point_data) is None:
             return {}
         return {
+            **super().extra_state_attributes,
             "par_annee": {
                 year: round(value, 3) for year, value in sorted(data.yearly.items())
-            }
+            },
         }
