@@ -23,7 +23,8 @@ def _point(address: str, **yearly: float) -> SievaData:
     return SievaData(
         yearly={k.removeprefix("y"): v for k, v in yearly.items()},
         address=address,
-        reference="6904900904",
+        installation_point="6904900904",
+        meter="C15FA000001",
     )
 
 
@@ -109,6 +110,12 @@ async def test_several_accounts_and_meters(
         assert total.attributes["unit_of_measurement"] == "m³"
         assert total.attributes["address"] == "1 RUE A 69380 CHASSELAY"
         assert total.attributes["installation_point"] == "6904900904"
+        assert total.attributes["meter"] == "C15FA000001"
+        device = dr.async_get(hass).async_get_device_by_identifier(
+            (DOMAIN, "4064"), entries[0].entry_id
+        )
+        assert device.name == "Sieva 4064"
+        assert device.serial_number == "C15FA000001"
         current_year = hass.states.get("sensor.sieva_4064_current_year")
         assert float(current_year.state) == 12.5
         assert current_year.attributes["yearly"] == {"2025": 50.0, "2026": 12.5}

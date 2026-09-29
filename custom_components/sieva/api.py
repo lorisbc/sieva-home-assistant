@@ -22,6 +22,7 @@ LOGIN_URL = f"{BASE_URL}/Connexion/Login"
 SYNTHESE_URL = f"{BASE_URL}/Usager/Abonnement/Synthese/{{}}"
 DELIVERY_POINTS_URL = f"{BASE_URL}/Usager/Abonnement/AjaxPointDInstallationSynchros"
 GRAPH_URL = f"{BASE_URL}/Usager/Abonnement/GetGraphRelevesData"
+READINGS_URL = f"{BASE_URL}/Usager/Abonnement/AjaxReleveSynchros"
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60)
 XHR_HEADERS = {
@@ -60,7 +61,8 @@ class SievaData:
 
     yearly: dict[str, float]
     address: str = ""
-    reference: str = ""
+    installation_point: str = ""  # number shown on the portal, e.g. 6904900904
+    meter: str = ""  # physical meter serial number, e.g. C15FA046458
     raw: Any = field(default=None, repr=False)
 
     @property
@@ -96,9 +98,11 @@ def parse_graph_payload(payload: Any) -> dict[str, float]:
 
 
 def parse_delivery_points(payload: Any) -> dict[str, dict[str, str]]:
-    """Extract ``{pointDInstallationId: {address, reference}}`` from the DataTables answer.
+    """Extract ``{pointDInstallationId: {address, installation_point}}``.
 
-    Row layout: ``[reference, address, reference, address, contract, ..., id]``.
+    DataTables rows: ``[number, address, number, address, contract, ..., id]``
+    where ``id`` is the internal id used by the API and ``number`` the
+    installation point number shown on the portal.
     """
     try:
         rows = payload["aaData"]
@@ -109,11 +113,26 @@ def parse_delivery_points(payload: Any) -> dict[str, dict[str, str]]:
     return {
         str(row[-1]): {
             "address": " ".join(str(row[1]).replace("(France)", "").split()),
-            "reference": str(row[0]).strip(),
+            "installation_point": str(row[0]).strip(),
         }
         for row in rows
         if len(row) > 1 and str(row[-1]).isdigit()
     }
+
+
+def parse_meter(payload: Any) -> str:
+    """Return the serial number of the meter of the most recent reading.
+
+    DataTables rows: ``[meter, "dd/mm/yyyy", mode, _, index, label, m³, ...]``.
+    """
+    try:
+        rows = [row for row in payload["aaData"] if len(row) > 1 and row[0]]
+    except (TypeError, KeyError) as err:
+        raise SievaParseError("Format AjaxReleveSynchros inattendu") from err
+    if not rows:
+        return ""
+    latest = max(rows, key=lambda row: str(row[1]).split("/")[::-1])
+    return str(latest[0]).strip()
 
 
 def parse_abonnements(html: str) -> list[str]:
@@ -210,6 +229,22 @@ class SievaClient:
             },
         )
 
+    async def _async_get_meter(self, delivery_point: str) -> str:
+        """Return the meter serial number (optional, empty if unavailable)."""
+        try:
+            payload = await self._request_json(
+                "POST",
+                READINGS_URL,
+                params={"pointDInstallationId": delivery_point},
+                data=DATATABLES_FORM,
+            )
+            return parse_meter(payload)
+        except SievaParseError as err:
+            _LOGGER.debug(
+                "Numéro de compteur indisponible pour %s: %s", delivery_point, err
+            )
+            return ""
+
     async def async_get_data(self) -> dict[str, SievaData]:
         """Log in once and fetch every installation point of the account."""
         landing = await self.async_login()
@@ -219,5 +254,10 @@ class SievaClient:
         for point, info in points.items():
             raw = await self._async_get_yearly(point)
             _LOGGER.debug("GetGraphRelevesData %s: %s", point, raw)
-            data[point] = SievaData(yearly=parse_graph_payload(raw), raw=raw, **info)
+            data[point] = SievaData(
+                yearly=parse_graph_payload(raw),
+                meter=await self._async_get_meter(point),
+                raw=raw,
+                **info,
+            )
         return data

@@ -66,7 +66,7 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
             name=f"Sieva {point}",
             manufacturer="Sieva",
             model="Compteur d'eau",
-            serial_number=coordinator.data[point].reference or point,
+            serial_number=coordinator.data[point].meter or None,
             entry_type=DeviceEntryType.SERVICE,
             configuration_url="https://ael.sieva.fr/Portail/fr-FR/Connexion/Login",
         )
@@ -84,7 +84,11 @@ class SievaEntity(CoordinatorEntity[SievaCoordinator]):
     def extra_state_attributes(self) -> dict[str, Any]:
         if (data := self.point_data) is None:
             return {}
-        return {"address": data.address, "installation_point": data.reference}
+        return {
+            "address": data.address,
+            "installation_point": data.installation_point,
+            "meter": data.meter,
+        }
 
 
 class SievaTotalSensor(SievaEntity, RestoreSensor):

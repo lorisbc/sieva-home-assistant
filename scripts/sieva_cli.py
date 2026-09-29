@@ -32,7 +32,9 @@ async def main() -> None:
         if not points:
             print("Aucun point d'installation trouvé")
         for point, data in points.items():
-            print(f"=== {point} ({data.reference}): {data.address}")
+            print(
+                f"=== {point} | point d'installation {data.installation_point} | compteur {data.meter} | {data.address}"
+            )
             print(json.dumps(data.raw, indent=2, ensure_ascii=False))
             for year, value in sorted(data.yearly.items()):
                 print(f"  {year}: {value} m³")

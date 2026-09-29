@@ -93,7 +93,7 @@ def test_delivery_points():
     assert api.parse_delivery_points(DELIVERY_POINTS) == {
         "4064": {
             "address": "1, RUE DE LA PAIX 69380 CHASSELAY",
-            "reference": "6904900904",
+            "installation_point": "6904900904",
         }
     }
 
@@ -105,3 +105,40 @@ def test_abonnements_from_landing_page():
     <div data-url="/Portail/fr-FR/Usager/Abonnement/GetSyntheseMini/30377?x=1"></div>
     """
     assert api.parse_abonnements(html) == ["30377"]
+
+
+def test_meter_from_latest_reading():
+    # AjaxReleveSynchros (trimmed), not sorted on purpose
+    payload = {
+        "aaData": [
+            [
+                "OLDMETER",
+                "15/11/2023",
+                "Télérelevée",
+                "",
+                "557",
+                "Consommation EAU",
+                "45",
+            ],
+            [
+                "C15FA000001",
+                "15/05/2026",
+                "Télérelevée",
+                "",
+                "816",
+                "Consommation EAU",
+                "52",
+            ],
+            [
+                "C15FA000001",
+                "15/11/2025",
+                "Télérelevée",
+                "",
+                "764",
+                "Consommation EAU",
+                "62",
+            ],
+        ]
+    }
+    assert api.parse_meter(payload) == "C15FA000001"
+    assert api.parse_meter({"aaData": []}) == ""

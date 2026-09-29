@@ -21,11 +21,11 @@ Intégration Home Assistant qui récupère la consommation d'eau depuis l'espace
   `pointDInstallationId`)
 - **Plusieurs comptes** (ex. le vôtre et celui de vos parents) et **plusieurs compteurs
   par compte**
-- Un appareil par compteur, nommé d'après son **point d'installation** (ex. `Sieva 4064`), avec l'adresse et la
-  référence du point d'installation en attributs
+- Un appareil par compteur (ex. `Sieva 4064`), avec l'adresse, le numéro de point
+  d'installation et le numéro de compteur
 - Compatible avec le **tableau de bord Énergie** (consommation d'eau)
 - Ressaisie du mot de passe proposée automatiquement s'il change
-- Diagnostics téléchargeables (identifiants, adresses et références masqués)
+- Diagnostics téléchargeables (identifiants, adresses et numéros masqués)
 - Aucune dépendance Python externe
 - Compatible **Home Assistant 2025.2+**, testée sur **2026.9**
 
@@ -69,7 +69,7 @@ l'intégration. Un compteur qui disparaît du portail passe en « indisponible �
 
 ### Capteurs
 
-Pour chaque compteur (`4064` = son point d'installation) :
+Pour chaque compteur (`4064` = son identifiant interne, voir plus bas) :
 
 | Capteur | Description |
 | --- | --- |
@@ -81,9 +81,23 @@ Attributs communs aux deux capteurs :
 | Attribut | Exemple | Description |
 | --- | --- | --- |
 | `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Adresse desservie |
-| `installation_point` | `6904900904` | Référence du point d'installation (aussi affichée comme numéro de série de l'appareil) |
+| `installation_point` | `6904900904` | Numéro du point d'installation |
+| `meter` | `C15FA046458` | Numéro du compteur physique |
 
 Vous pouvez renommer l'appareil dans Home Assistant (ex. « Maison », « Parents »).
+
+#### Les trois numéros
+
+Le portail utilise trois numéros différents pour un même compteur :
+
+| Numéro | Exemple | Où le voir | Utilisation dans l'intégration |
+| --- | --- | --- | --- |
+| Identifiant interne (`pointDInstallationId`) | `4064` | Invisible sur le portail (utilisé par ses requêtes) | Nom de l'appareil (`Sieva 4064`), identifiants des entités, récupération des données |
+| Numéro de point d'installation | `6904900904` | Portail → *Point d'installation* | Attribut `installation_point` |
+| Numéro de compteur | `C15FA046458` | Portail → *Compteur*, et sur le compteur lui-même | Attribut `meter` et numéro de série de l'appareil |
+
+Si le compteur est remplacé, le numéro de compteur change mais pas les deux
+autres : l'appareil et son historique sont conservés.
 
 ### Fonctionnement
 
@@ -136,7 +150,7 @@ l'intégration, comme pour les autres intégrations cloud, et ne sont envoyés q
 ### Dépannage
 
 - **Diagnostics** : page de l'intégration → menu ⋮ → *Télécharger les diagnostics*.
-  Le fichier contient les réponses brutes du portail (identifiants, adresses et références masqués).
+  Le fichier contient les réponses brutes du portail (identifiants, adresses et numéros masqués).
 - **Logs détaillés** :
 
   ```yaml
@@ -180,11 +194,11 @@ Home Assistant integration that retrieves water consumption from the
 - **Automatic meter discovery** (no need to look up the `pointDInstallationId`)
 - **Several accounts** (e.g. yours and your parents') and **several meters per
   account**
-- One device per meter, named after its **installation point** (e.g. `Sieva 4064`), with the address and the
-  installation point reference as attributes
+- One device per meter (e.g. `Sieva 4064`), with the address, the installation point
+  number and the meter serial number
 - Works with the **Energy dashboard** (water consumption)
 - Automatic re-authentication prompt when the password changes
-- Downloadable diagnostics (credentials, addresses and references redacted)
+- Downloadable diagnostics (credentials, addresses and numbers redacted)
 - No external Python dependency
 - Compatible with **Home Assistant 2025.2+**, tested on **2026.9**
 
@@ -227,7 +241,7 @@ no longer returned by the portal becomes unavailable.
 
 ### Sensors
 
-For each meter (`4064` = its installation point):
+For each meter (`4064` = its internal id, see below):
 
 | Sensor | Description |
 | --- | --- |
@@ -239,9 +253,23 @@ Attributes shared by both sensors:
 | Attribute | Example | Description |
 | --- | --- | --- |
 | `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Served address |
-| `installation_point` | `6904900904` | Installation point reference (also shown as the device serial number) |
+| `installation_point` | `6904900904` | Installation point number |
+| `meter` | `C15FA046458` | Physical meter serial number |
 
 You can rename the device in Home Assistant (e.g. "Home", "Parents").
+
+#### The three numbers
+
+The portal uses three different numbers for the same meter:
+
+| Number | Example | Where to see it | Use in the integration |
+| --- | --- | --- | --- |
+| Internal id (`pointDInstallationId`) | `4064` | Hidden on the portal (used by its requests) | Device name (`Sieva 4064`), entity ids, data retrieval |
+| Installation point number | `6904900904` | Portal → *Point d'installation* | `installation_point` attribute |
+| Meter serial number | `C15FA046458` | Portal → *Compteur*, and on the meter itself | `meter` attribute and device serial number |
+
+If the meter is replaced, its serial number changes but not the other two: the device
+and its history are kept.
 
 ### How it works
 
@@ -290,7 +318,7 @@ integrations, and they are only sent to `ael.sieva.fr`.
 ### Troubleshooting
 
 - **Diagnostics**: integration page → ⋮ menu → *Download diagnostics*. The file
-  contains the raw portal answers (credentials, addresses and references redacted).
+  contains the raw portal answers (credentials, addresses and numbers redacted).
 - **Debug logs**:
 
   ```yaml
