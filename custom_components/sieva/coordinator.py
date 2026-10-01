@@ -18,7 +18,7 @@ type SievaConfigEntry = ConfigEntry[SievaCoordinator]
 
 
 class SievaCoordinator(DataUpdateCoordinator[dict[str, SievaData]]):
-    """Fetch the yearly consumption of every installation point of an account."""
+    """Fetch the consumption of every installation point of an account."""
 
     config_entry: SievaConfigEntry
 

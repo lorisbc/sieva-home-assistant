@@ -97,11 +97,12 @@ class SievaWaterSensor(SievaEntity):
             "address": data.address,
             "installation_point": data.installation_point,
             "meter": data.meter,
+            "last_day": data.last_day.isoformat() if data.last_day else None,
         }
 
 
 class SievaTotalSensor(SievaWaterSensor, RestoreSensor):
-    """Cumulated consumption since the start of the contract (m³).
+    """Cumulated consumption since the start of the history (m³).
 
     This is the sensor to use in the Energy dashboard.
     """
@@ -158,9 +159,7 @@ class SievaCurrentYearSensor(SievaWaterSensor, SensorEntity):
             return {}
         return {
             **super().extra_state_attributes,
-            "yearly": {
-                year: round(value, 3) for year, value in sorted(data.yearly.items())
-            },
+            "yearly": data.yearly,
         }
 
 

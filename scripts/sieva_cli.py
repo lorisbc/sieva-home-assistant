@@ -3,6 +3,7 @@
 Usage:
     python3 -m venv .venv && .venv/bin/pip install aiohttp
     SIEVA_LOGIN=... SIEVA_PASSWORD=... .venv/bin/python scripts/sieva_cli.py
+    (RAW=1 to also print the raw portal answers)
 """
 
 import asyncio
@@ -35,10 +36,14 @@ async def main() -> None:
             print(
                 f"=== {point} | installation point {data.installation_point} | meter {data.meter} | {data.address}"
             )
-            print(json.dumps(data.raw, indent=2, ensure_ascii=False))
-            for year, value in sorted(data.yearly.items()):
+            if os.getenv("RAW"):
+                print(json.dumps(data.raw, indent=2, ensure_ascii=False))
+            for year, value in data.yearly.items():
                 print(f"  {year}: {value} m³")
-            print(f"  TOTAL: {data.total} m³")
+            print(f"  TOTAL: {data.total} m³ (data until {data.last_day})")
+            print("  Last periods (end date: m³):")
+            for end in sorted(data.consumption)[-5:]:
+                print(f"    {end}: {data.consumption[end]}")
 
 
 if __name__ == "__main__":

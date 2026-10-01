@@ -93,6 +93,7 @@ Les mêmes informations sont aussi disponibles en attributs de Total et Current 
 | `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Adresse desservie |
 | `installation_point` | `6900000123` | Numéro du point d'installation |
 | `meter` | `C15FA012345` | Numéro du compteur physique |
+| `last_day` | `2026-09-30` | Dernier jour inclus dans les données (en général la veille) |
 
 Vous pouvez renommer l'appareil dans Home Assistant (ex. « Maison », « Parents »).
 
@@ -117,12 +118,22 @@ Toutes les **6 heures**, pour chaque compte :
    compteurs) ;
 2. détection des abonnements, puis des points d'installation
    (`AjaxPointDInstallationSynchros`) ;
-3. pour chaque compteur, lecture des consommations annuelles (`GetGraphRelevesData`,
-   granularité `Annee`).
+3. pour chaque compteur, lecture des consommations (`GetGraphRelevesData`) par
+   année, par mois et par jour, puis combinaison sans doublon :
 
-Le **Total** est la somme de ces consommations annuelles : il augmente à chaque
-nouvelle donnée publiée par Sieva. Le portail ne publie qu'une valeur par jour, il
-est donc inutile d'interroger plus souvent. Pour forcer une mise à jour : action
+   | Granularité | Ce que le portail renvoie | Utilisé pour |
+   | --- | --- | --- |
+   | `Annee` | Années **terminées** uniquement | Les années passées |
+   | `Mois` | Mois terminés (24 derniers mois) | Les mois de l'année en cours |
+   | `Jour` | Jours (environ 6 derniers mois) | Les jours depuis le dernier mois terminé |
+
+   Chaque valeur du portail est datée à la **fin** de sa période : `01/01/2026` en
+   annuel est la consommation de 2025, `01/10/2026` en mensuel celle de septembre.
+
+Le **Total** est la somme de ces consommations : il augmente chaque jour avec la
+dernière valeur publiée par Sieva. L'attribut `last_day` indique le dernier jour
+inclus (en général la veille). Le portail ne publie qu'une valeur par jour, il est
+donc inutile d'interroger plus souvent. Pour forcer une mise à jour : action
 `homeassistant.update_entity` sur le capteur Total.
 
 > ℹ️ Le Total part du début de l'historique disponible sur le portail : ce n'est pas
@@ -274,6 +285,7 @@ The same information is also available as attributes of Total and Current year
 | `address` | `1, RUE DE LA PAIX 69380 CHASSELAY` | Served address |
 | `installation_point` | `6900000123` | Installation point number |
 | `meter` | `C15FA012345` | Physical meter serial number |
+| `last_day` | `2026-09-30` | Last day included in the data (usually yesterday) |
 
 You can rename the device in Home Assistant (e.g. "Home", "Parents").
 
@@ -297,11 +309,21 @@ Every **6 hours**, for each account:
 1. log in to the portal (a single login per account, whatever the number of meters);
 2. discover the subscriptions, then the installation points
    (`AjaxPointDInstallationSynchros`);
-3. for each meter, read the yearly consumption (`GetGraphRelevesData`, `Annee`
-   granularity).
+3. for each meter, read the consumption (`GetGraphRelevesData`) per year, month and
+   day, then combine them without overlap:
 
-The **Total** is the sum of these yearly values: it grows with every new value
-published by Sieva. The portal publishes one value per day, so polling more often is
+   | Granularity | What the portal returns | Used for |
+   | --- | --- | --- |
+   | `Annee` | **Finished** years only | Past years |
+   | `Mois` | Finished months (last 24 months) | Months of the current year |
+   | `Jour` | Days (about the last 6 months) | Days since the last finished month |
+
+   Each portal value is dated at the **end** of its period: `01/01/2026` in yearly
+   data is the 2025 consumption, `01/10/2026` in monthly data is September.
+
+The **Total** is the sum of these values: it grows every day with the latest value
+published by Sieva. The `last_day` attribute gives the last day included (usually
+yesterday). The portal publishes one value per day, so polling more often is
 pointless. To force a refresh: `homeassistant.update_entity` action on the Total
 sensor.
 

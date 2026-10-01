@@ -1,5 +1,6 @@
 """Config flow and sensor tests against a real Home Assistant core."""
 
+from datetime import date
 from unittest.mock import AsyncMock, patch
 
 from freezegun.api import FrozenDateTimeFactory
@@ -21,8 +22,14 @@ GET_DATA = "custom_components.sieva.api.SievaClient.async_get_data"
 
 
 def _point(address: str, **yearly: float) -> SievaData:
+    """y2025=50 -> 50 m³ in 2025 (finished year); y2026 -> in August 2026."""
+    consumption = {}
+    for key, value in yearly.items():
+        year = int(key.removeprefix("y"))
+        end = date(year + 1, 1, 1) if year < 2026 else date(year, 9, 1)
+        consumption[end] = value
     return SievaData(
-        yearly={k.removeprefix("y"): v for k, v in yearly.items()},
+        consumption=consumption,
         address=address,
         installation_point="6900000123",
         meter="C15FA000001",
@@ -112,6 +119,7 @@ async def test_several_accounts_and_meters(
         assert total.attributes["address"] == "1 RUE A 69380 CHASSELAY"
         assert total.attributes["installation_point"] == "6900000123"
         assert total.attributes["meter"] == "C15FA000001"
+        assert total.attributes["last_day"] == "2026-08-31"
         (device,) = [
             device
             for device in dr.async_entries_for_config_entry(
