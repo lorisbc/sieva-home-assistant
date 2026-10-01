@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -22,7 +21,19 @@ async def async_get_config_entry_diagnostics(
         {
             "entry": dict(entry.data),
             "delivery_points": {
-                point: {**asdict(data), "total": data.total}
+                point: {
+                    "address": data.address,
+                    "installation_point": data.installation_point,
+                    "meter": data.meter,
+                    "total": data.total,
+                    "yearly": data.yearly,
+                    "last_day": data.last_day.isoformat() if data.last_day else None,
+                    "consumption": {
+                        end.isoformat(): value
+                        for end, value in sorted(data.consumption.items())
+                    },
+                    "raw": data.raw,
+                }
                 for point, data in (entry.runtime_data.data or {}).items()
             },
         },

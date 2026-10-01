@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 import json
 import logging
 import re
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import aiohttp
 
@@ -24,6 +26,7 @@ DELIVERY_POINTS_URL = f"{BASE_URL}/Usager/Abonnement/AjaxPointDInstallationSynch
 GRAPH_URL = f"{BASE_URL}/Usager/Abonnement/GetGraphRelevesData"
 READINGS_URL = f"{BASE_URL}/Usager/Abonnement/AjaxReleveSynchros"
 
+PORTAL_TZ = ZoneInfo("Europe/Paris")
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60)
 XHR_HEADERS = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -36,7 +39,7 @@ _TOKEN_RE = re.compile(
     r'name="__RequestVerificationToken"[^>]*?value="([^"]+)"', re.IGNORECASE
 )
 _SUBSCRIPTION_RE = re.compile(r"/Usager/Abonnement/\w+/(\d+)", re.IGNORECASE)
-_YEAR_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
+_DATE_RE = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 
 
 class SievaError(Exception):
@@ -59,7 +62,8 @@ class SievaParseError(SievaError):
 class SievaData:
     """Consumption of one installation point."""
 
-    yearly: dict[str, float]
+    # {end of period: m³ consumed during the period}, see parse_graph_payload
+    consumption: dict[date, float]
     address: str = ""
     installation_point: str = ""  # number shown on the portal, e.g. 6900000123
     meter: str = ""  # physical meter serial number, e.g. C15FA012345
@@ -67,16 +71,34 @@ class SievaData:
 
     @property
     def total(self) -> float:
-        """Cumulated consumption since the start of the contract, in m³."""
-        return round(sum(self.yearly.values()), 3)
+        """Cumulated consumption since the start of the history, in m³."""
+        return round(sum(self.consumption.values()), 3)
+
+    @property
+    def yearly(self) -> dict[str, float]:
+        """Consumption per calendar year, in m³."""
+        result: dict[str, float] = {}
+        for end, value in self.consumption.items():
+            year = str((end - timedelta(days=1)).year)
+            result[year] = result.get(year, 0.0) + value
+        return {year: round(value, 3) for year, value in sorted(result.items())}
+
+    @property
+    def last_day(self) -> date | None:
+        """Last day included in the data."""
+        if not self.consumption:
+            return None
+        return max(self.consumption) - timedelta(days=1)
 
 
-def parse_graph_payload(payload: Any) -> dict[str, float]:
-    """Extract ``{year: m³}`` from the ``GetGraphRelevesData`` answer.
+def parse_graph_payload(payload: Any) -> dict[date, float]:
+    """Extract ``{end of period: m³}`` from a ``GetGraphRelevesData`` answer.
 
-    The portal returns Chart.js data: ``{"labels": [...], "datasets":
-    [{"label": "<meter>", "data": [...]}]}``. Every dataset (one per meter)
-    is summed so a meter replacement does not break the total.
+    The portal returns Chart.js data: ``{"labels": ["dd/mm/yyyy", ...],
+    "datasets": [{"label": "<point>", "data": [...]}]}``. Each label is the
+    END of its period: with the ``Annee`` granularity, ``01/01/2026`` is the
+    consumption of 2025; with ``Mois``, ``01/10/2026`` is September; with
+    ``Jour``, ``01/10/2026`` is September 30th. Datasets are summed.
     """
     try:
         labels = payload["labels"]
@@ -86,15 +108,31 @@ def parse_graph_payload(payload: Any) -> dict[str, float]:
             f"Unexpected GetGraphRelevesData format: {payload!r:.200}"
         ) from err
 
-    result: dict[str, float] = {}
+    result: dict[date, float] = {}
     for dataset in datasets:
         for label, value in zip(labels, dataset.get("data") or [], strict=False):
-            if value is None:
+            if value is None or (match := _DATE_RE.search(str(label))) is None:
                 continue
-            match = _YEAR_RE.search(str(label))
-            key = match.group(1) if match else str(label)
-            result[key] = result.get(key, 0.0) + float(value)
+            day, month, year = (int(part) for part in match.groups())
+            end = date(year, month, day)
+            result[end] = result.get(end, 0.0) + float(value)
     return result
+
+
+def merge_periods(*series: dict[date, float]) -> dict[date, float]:
+    """Merge series from the coarsest to the finest without overlap.
+
+    The yearly series only covers finished years and the monthly one finished
+    months: each finer series only adds the periods after the last date
+    already covered.
+    """
+    merged: dict[date, float] = {}
+    for values in series:
+        last = max(merged, default=None)
+        merged.update(
+            {end: value for end, value in values.items() if last is None or end > last}
+        )
+    return merged
 
 
 def parse_delivery_points(payload: Any) -> dict[str, dict[str, str]]:
@@ -218,16 +256,18 @@ class SievaClient:
             points.update(parse_delivery_points(payload))
         return points
 
-    async def _async_get_yearly(self, delivery_point: str) -> Any:
-        """Return the raw yearly consumption of an installation point."""
+    async def _async_get_graph(
+        self, delivery_point: str, granularity: str, start: str = ""
+    ) -> Any:
+        """Return the raw consumption of an installation point."""
         return await self._request_json(
             "POST",
             GRAPH_URL,
             json={
                 "pointDInstallationId": delivery_point,
-                "dateDebut": "",
+                "dateDebut": start,
                 "dateFin": "",
-                "granularite": "Annee",
+                "granularite": granularity,
             },
         )
 
@@ -253,11 +293,23 @@ class SievaClient:
         points = await self._async_get_delivery_points(landing)
         _LOGGER.debug("Installation points found: %s", points)
         data: dict[str, SievaData] = {}
+        # Finished years, finished months since January of last year (the
+        # portal keeps 24 months), then days (it keeps about 6 months).
+        granularities = {
+            "Annee": "",
+            "Mois": f"01/01/{datetime.now(PORTAL_TZ).year - 1}",
+            "Jour": "",
+        }
         for point, info in points.items():
-            raw = await self._async_get_yearly(point)
+            raw = {
+                granularity: await self._async_get_graph(point, granularity, start)
+                for granularity, start in granularities.items()
+            }
             _LOGGER.debug("GetGraphRelevesData %s: %s", point, raw)
             data[point] = SievaData(
-                yearly=parse_graph_payload(raw),
+                consumption=merge_periods(
+                    *(parse_graph_payload(payload) for payload in raw.values())
+                ),
                 meter=await self._async_get_meter(point),
                 raw=raw,
                 **info,

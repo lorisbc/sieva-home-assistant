@@ -1,24 +1,39 @@
 """Parser tests, using payloads captured from the portal."""
 
+from datetime import date
+
 import pytest
 
 from custom_components.sieva import api
 
-# GetGraphRelevesData, granularite=Jour (trimmed)
-DAILY = {
-    "Id": 0,
-    "labels": ["31/12/2025", "01/01/2026", "02/01/2026"],
-    "datasets": [
-        {
-            "Id": 0,
-            "label": "6900000123",
-            "data": [0.255000, 0.265000, 0.309000],
-            "backgroundColor": [],
-            "hoverBackgroundColor": None,
-        }
-    ],
-    "graphWidth": 0,
-}
+
+def _graph(labels: list[str], data: list[float]) -> dict:
+    """GetGraphRelevesData answer, as returned by the portal (values are fictional)."""
+    return {
+        "Id": 0,
+        "labels": labels,
+        "datasets": [
+            {
+                "Id": 0,
+                "label": "6900000123",
+                "data": data,
+                "backgroundColor": ["rgb(0, 156, 206)"] * len(data),
+                "hoverBackgroundColor": None,
+            }
+        ],
+        "graphWidth": 0,
+    }
+
+
+# Labels are the END of each period.
+YEARLY = _graph(["01/01/2025", "01/01/2026"], [90.0, 110.0])  # 2024, 2025
+MONTHLY = _graph(  # Nov 2025, Dec 2025, Jan 2026, Aug 2026, Sep 2026
+    ["01/12/2025", "01/01/2026", "01/02/2026", "01/09/2026", "01/10/2026"],
+    [8.0, 9.0, 10.0, 11.0, 12.0],
+)
+DAILY = _graph(  # Sep 29, Sep 30, Oct 1
+    ["30/09/2026", "01/10/2026", "02/10/2026"], [0.3, 0.4, 0.5]
+)
 
 # AjaxPointDInstallationSynchros (anonymized)
 DELIVERY_POINTS = {
@@ -45,42 +60,51 @@ DELIVERY_POINTS = {
 }
 
 
-def test_graph_daily_grouped_by_year():
-    assert api.parse_graph_payload(DAILY) == pytest.approx(
-        {"2025": 0.255, "2026": 0.574}
-    )
-
-
-def test_graph_yearly_real_payload():
-    payload = {
-        "Id": 0,
-        "labels": ["01/01/2025", "01/01/2026"],
-        "datasets": [
-            {
-                "Id": 0,
-                "label": "6900000123",
-                "data": [90.125, 110.5],
-                "backgroundColor": ["rgb(0, 156, 206)", "rgb(0, 156, 206)"],
-                "hoverBackgroundColor": None,
-            }
-        ],
-        "graphWidth": 0,
+def test_graph_labels_are_period_ends():
+    assert api.parse_graph_payload(YEARLY) == {
+        date(2025, 1, 1): 90.0,
+        date(2026, 1, 1): 110.0,
     }
-    data = api.SievaData(yearly=api.parse_graph_payload(payload))
-    assert data.yearly == {"2025": 90.125, "2026": 110.5}
-    assert data.total == 200.625
+    data = api.SievaData(consumption=api.parse_graph_payload(YEARLY))
+    # "01/01/2026" is the consumption of 2025
+    assert data.yearly == {"2024": 90.0, "2025": 110.0}
+    assert data.last_day == date(2025, 12, 31)
 
 
-def test_graph_yearly_and_meter_replacement():
+def test_merge_yearly_monthly_daily():
+    data = api.SievaData(
+        consumption=api.merge_periods(
+            api.parse_graph_payload(YEARLY),
+            api.parse_graph_payload(MONTHLY),
+            api.parse_graph_payload(DAILY),
+        )
+    )
+    # Months already covered by the yearly data and days already covered by
+    # the monthly data are ignored.
+    assert data.yearly == {"2024": 90.0, "2025": 110.0, "2026": 33.5}
+    assert data.total == 233.5
+    assert data.last_day == date(2026, 10, 1)
+
+
+def test_merge_without_yearly_data():
+    data = api.SievaData(
+        consumption=api.merge_periods(
+            {}, api.parse_graph_payload(MONTHLY), api.parse_graph_payload(DAILY)
+        )
+    )
+    assert data.total == 50.5
+
+
+def test_graph_meter_replacement():
     payload = {
-        "labels": ["2025", "2026"],
+        "labels": ["01/01/2025", "01/01/2026"],
         "datasets": [
             {"label": "OLD", "data": [50.5, 10]},
             {"label": "NEW", "data": [0, 20]},
         ],
     }
-    data = api.SievaData(yearly=api.parse_graph_payload(payload))
-    assert data.yearly == {"2025": 50.5, "2026": 30.0}
+    data = api.SievaData(consumption=api.parse_graph_payload(payload))
+    assert data.yearly == {"2024": 50.5, "2025": 30.0}
     assert data.total == 80.5
 
 
